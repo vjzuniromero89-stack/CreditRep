@@ -107,7 +107,9 @@ export function pdfItemsToRows(pages) {
       rows.push({ cells: texts, xs: cells.map((c) => c.x), ws: cells.map((c) => c.w), parts, y: line.y, page: pi, table: texts.length > 1 });
     }
   });
-  return mergePdfRows(rows);
+  const merged = mergePdfRows(rows);
+  merged.raw = rows;
+  return merged;
 }
 
 const isLabelText = (t) => /[:：]\s*$/.test(t || '') || !!labelKey(t);

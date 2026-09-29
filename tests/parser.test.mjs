@@ -75,3 +75,26 @@ test('Reporte de un solo bureau no elimina los otros', () => {
   const plan = computeDiff(existing, onlyTU, ['TU']);
   assert.equal(plan.removed.length, 0);
 });
+
+import { textToRows } from '../src/lib/parser/extract.js';
+import { suggestClientFields } from '../src/lib/clientSuggest.js';
+test('Reporte hipotecario tri-merge (MeridianLink)', () => {
+  const t = fs.readFileSync('tests/fixtures/trimerge.txt', 'utf8');
+  const r = parseReport(textToRows(t), t);
+  assert.equal(r.provider, 'Tri-merge (hipotecario)');
+  assert.deepEqual(r.scores, { EQ: 610, TU: 598, EX: 605 });
+  const key = (a) => `${a.name}:${a.bureau}:${a.category}`;
+  const acc = r.accounts.map(key);
+  assert.ok(['MIDLAND CREDIT:EX:coleccion', 'MIDLAND CREDIT:TU:coleccion', 'MIDLAND CREDIT:EQ:coleccion'].every((k) => acc.includes(k)));
+  assert.deepEqual(r.accounts.filter((a) => a.name === 'DISCOVER BANK').map((a) => a.bureau), ['EX', 'EQ']);
+  assert.equal(r.accounts.find((a) => a.name === 'DISCOVER BANK').category, 'charge_off');
+  const ally = r.accounts.find((a) => a.name.startsWith('ALLY'));
+  assert.equal(ally.name, 'ALLY FINANCIAL USA'); assert.equal(ally.account_number, '30000228244'); assert.equal(ally.category, 'pagos_tarde'); assert.equal(ally.late_30, 3);
+  assert.equal(r.accounts.find((a) => a.name === 'CHASE CARD').category, 'positiva');
+  assert.deepEqual(r.inquiries.map((i) => i.bureau), ['EX', 'EQ']);
+  assert.equal(r.creditorContacts.find((c) => c.name === 'MIDLAND CREDIT').address, '350 CAMINO DE LA REINA, SAN DIEGO, CA 92108');
+  assert.ok(r.personal.some((p) => p.bureau === 'EX' && p.name === 'JOHN PERES'));
+  assert.ok(r.personal.some((p) => p.category === 'empleador' && p.name === 'ACME LOGISTICS'));
+  const s = suggestClientFields(r);
+  assert.equal(s.first_name, 'Juan'); assert.equal(s.last_name, 'Perez Lopez'); assert.equal(s.dob, '1985-01-15'); assert.equal(s.zip, '19801');
+});

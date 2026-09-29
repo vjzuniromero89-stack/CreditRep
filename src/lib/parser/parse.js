@@ -1,3 +1,4 @@
+import { isMergedReport, parseMergedReport } from './merged.js';
 // Analiza las filas de un reporte 3-bureau (IdentityIQ, SmartCredit, MyScoreIQ, MyFreeScoreNow…)
 // y devuelve la información organizada por bureau.
 
@@ -147,6 +148,8 @@ export function matchKey(kind, it) {
 
 // ------------------------------------------------------------------ parser principal
 export function parseReport(rows, rawText = '') {
+  const allText = rawText + '\n' + rows.map((r) => r.cells.join(' ')).join('\n');
+  if (isMergedReport(allText)) return parseMergedReport(rows.raw || rows);
   const res = {
     provider: detectProvider(rawText + ' ' + rows.slice(0, 80).map((r) => r.cells.join(' ')).join(' ')),
     reportDate: null,

@@ -39,7 +39,8 @@ export function flagPersonal(items, client) {
       if (!phones.includes(digits(v).slice(-10))) reason = 'Teléfono que no es del cliente';
     } else if (i.category === 'empleador') {
       const ve = up(v).replace(/[^A-Z0-9]/g, '');
-      if (!emp || !(ve.includes(emp) || emp.includes(ve))) reason = emp ? 'Empleador que no es el actual' : 'Empleador anterior / no confirmado';
+      if (!emp) { warnings.add('Agrega el empleador actual del cliente para detectar empleadores viejos.'); return; }
+      if (!(ve.includes(emp) || emp.includes(ve))) reason = 'Empleador que no es el actual';
     } else if (i.category === 'fecha_nacimiento') {
       const y = (v.match(/\b(19|20)\d{2}\b/) || [])[0];
       if (dobY && y && y !== dobY) reason = 'Fecha de nacimiento incorrecta';
@@ -117,6 +118,19 @@ export function buildPackage({ client, items, templates, docs = [], creditors = 
   // 4) acreedores / cobradores (una carta por cuenta, sin repetir los 3 bureaus)
   if (opt.creditorLetters) {
     const dir = Object.fromEntries(creditors.map((c) => [c.norm || creditorNorm(c.name), c]));
+    const withAddr = creditors.filter((c) => c.address);
+    const lookup = (name) => {
+      const n = creditorNorm(name);
+      if (dir[n]?.address) return dir[n];
+      // parecido: mismo inicio (LVNVFUNDG ≈ LVNV FUNDING LLC)
+      let best = null; let bl = 0;
+      withAddr.forEach((c) => {
+        const cn = c.norm || creditorNorm(c.name);
+        let k = 0; while (k < n.length && k < cn.length && n[k] === cn[k]) k++;
+        if (k > bl) { bl = k; best = c; }
+      });
+      return bl >= Math.min(6, n.length) ? best : dir[n] || null;
+    };
     const seen = new Map();
     open.filter((i) => i.kind === 'cuenta' && i.is_negative).forEach((i) => {
       const purpose = ['coleccion', 'charge_off'].includes(i.category) ? 'validacion' : i.category === 'pagos_tarde' ? (opt.goodwill ? 'goodwill' : null) : null;
@@ -127,7 +141,7 @@ export function buildPackage({ client, items, templates, docs = [], creditors = 
     });
     [...seen.values()].forEach(({ purpose, items: its }) => {
       const first = its[0];
-      const d = dir[creditorNorm(first.name)];
+      const d = lookup(first.name);
       const ok = its.filter(recentOk);
       if (!ok.length) return;
       add({ group: 'ACREEDOR', bureau: null, recipient: 'acreedor', purpose, purposeLabel: purpose === 'validacion' ? 'Validación de deuda' : 'Buena voluntad (pagos tarde)',

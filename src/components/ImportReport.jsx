@@ -10,7 +10,7 @@ import { ACCOUNT_CATEGORIES, BUREAUS, BUREAU_NAME, BUREAU_COLOR, PERSONAL_CATEGO
 import { money } from '../lib/format';
 import { Badge, Button, Field, Input, Modal, Select, Tabs, Textarea, useToast, cx } from './ui';
 
-const PROVIDERS = ['IdentityIQ', 'SmartCredit', 'MyScoreIQ', 'MyFreeScoreNow', 'Otro'];
+const PROVIDERS = ['IdentityIQ', 'SmartCredit', 'MyScoreIQ', 'MyFreeScoreNow', 'Tri-merge (hipotecario)', 'Otro'];
 
 export default function ImportReport({ open, onClose, client, onDone }) {
   const { settings } = useAuth();

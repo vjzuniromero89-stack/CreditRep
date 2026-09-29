@@ -14,7 +14,7 @@ export function toISODate(s) {
   if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   const m = String(s).match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
-  if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`; }
+  if (m) { const y = m[3].length === 2 ? (+m[3] > 30 ? '19' : '20') + m[3] : m[3]; return `${y}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`; }
   return null;
 }
 export const ssn4 = (ssn) => (ssn || '').replace(/\D/g, '').slice(-4);

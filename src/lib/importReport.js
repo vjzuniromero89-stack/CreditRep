@@ -3,6 +3,8 @@ import { feeFor, isBillable } from './reportDiff';
 import { BUREAU_NAME } from './constants';
 import { money, today, toISODate } from './format';
 import { creditorNorm } from './packageBuilder';
+import { suggestClientFields } from './clientSuggest.js';
+export { suggestClientFields };
 
 const ITEM_FIELDS = ['kind', 'category', 'bureau', 'name', 'account_number', 'original_creditor', 'account_type', 'balance', 'past_due',
   'high_credit', 'credit_limit', 'monthly_payment', 'date_opened', 'last_reported', 'item_date', 'account_status', 'payment_status',
@@ -23,31 +25,6 @@ async function chunked(list, size, fn) {
   for (let i = 0; i < list.length; i += size) await Promise.all(list.slice(i, i + size).map(fn));
 }
 
-export function suggestClientFields(parsed) {
-  const pick = (cat) => ['TU', 'EX', 'EQ'].map((b) => parsed.personal.find((p) => p.bureau === b && p.category === cat)).find(Boolean);
-  const out = {};
-  const name = pick('nombre');
-  if (name) {
-    const w = name.name.split(/\s+/);
-    out.first_name = cap(w[0]);
-    if (w.length > 2) { out.middle_name = cap(w.slice(1, -1).join(' ')); }
-    if (w.length > 1) out.last_name = cap(w[w.length - 1]);
-  }
-  const dob = parsed.personal.find((p) => p.category === 'fecha_nacimiento' && toISODate(p.name));
-  if (dob) out.dob = toISODate(dob.name);
-  const addr = parsed.personal.find((p) => p.category === 'direccion' && p.extra?.tipo === 'actual') || pick('direccion');
-  if (addr) {
-    const m = addr.name.match(/^(.*?),\s*([^,]+?),?\s+([A-Z]{2}),?\s+(\d{5}(?:-\d{4})?)/i);
-    if (m) { out.address = cap(m[1]); out.city = cap(m[2]); out.state = m[3].toUpperCase(); out.zip = m[4]; }
-    else out.address = cap(addr.name);
-  }
-  const phone = pick('telefono');
-  if (phone) out.phone = phone.name;
-  const emp = pick('empleador');
-  if (emp) out.employer = cap(emp.name);
-  return out;
-}
-const cap = (s) => (s || '').toLowerCase().replace(/\b([a-z])/g, (m) => m.toUpperCase());
 
 export async function saveImport({ client, parsed, plan, file, settings, fillClient = true, provider, reportDate }) {
   const clientId = client.id;
