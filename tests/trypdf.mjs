@@ -1,0 +1,11 @@
+import fs from 'fs';
+import { pdfToRowsNode } from './pdfhelper.mjs';
+import { parseReport } from '../src/lib/parser/parse.js';
+const f = process.argv[2];
+const { rows, text } = await pdfToRowsNode(fs.readFileSync(f));
+if (process.argv[3]) rows.slice(0, 60).forEach(r => console.log(JSON.stringify(r.cells), r.xs.map(Math.round)));
+const r = parseReport(rows, text);
+console.log('=====', r.provider, r.reportDate, r.bureaus, r.scores, r.warnings);
+r.personal.forEach(p => console.log('P', p.bureau, p.category, p.name));
+r.accounts.forEach(a => console.log('A', a.bureau, a.name, a.account_number, a.balance, a.category, a.late_30, a.late_60, a.late_90));
+r.inquiries.forEach(q => console.log('I', q.bureau, q.name, q.item_date));

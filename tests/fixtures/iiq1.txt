@@ -1,0 +1,125 @@
+IdentityIQ
+Personal Information
+	TransUnion	Experian	Equifax
+Credit Report Date:	09/15/2026	09/15/2026	09/15/2026
+Name:	JUAN C PEREZ	JUAN CARLOS PEREZ	JUAN PEREZ
+Also Known As:	JUAN PERES
+JOHN PEREZ	JUAN C PEREZ LOPEZ	-
+Former:	-		-
+Date of Birth:	1989	1989	01/01/1989
+Current Address(es):	123 MAIN ST
+WILMINGTON, DE 19801
+05/2021	123 MAIN ST
+WILMINGTON, DE 19801	123 MAIN STREET
+WILMINGTON, DE 19801
+Previous Address(es):	45 OAK AVE APT 2
+NEWARK, DE 19711
+01/2019
+900 PINE RD
+DOVER, DE 19901	45 OAK AVE
+NEWARK, DE 19711	-
+Employers:	ACME LOGISTICS	ACME LOGISTICS INC	-
+Credit Score
+	TransUnion	Experian	Equifax
+Credit Score:	548	561	552
+Lender Rank:	Fair	Fair	Poor
+Score Scale:	300-850	300-850	300-850
+Summary
+	TransUnion	Experian	Equifax
+Total Accounts:	4	5	4
+Collection:	1	2	1
+Inquiries(2 years):	2	1	1
+Account History
+MIDLAND CREDIT MGMT
+	TransUnion	Experian	Equifax
+Account #:	8547****	8547****	8547****
+Account Type:	Open Account	Open Account	Open Account
+Account Type - Detail:	Collection Agency/Attorney	Collection Agency/Attorney	Debt Buyer
+Account Status:	Derogatory	Derogatory	Derogatory
+Date Opened:	03/15/2022	03/01/2022	03/01/2022
+Balance:	$1,245.00	$1,245.00	$1,245.00
+Payment Status:	Collection/Chargeoff	Collection/Chargeoff	Collection/Chargeoff
+Last Reported:	08/01/2026	08/05/2026	08/03/2026
+Comments:	Placed for collection	Account information disputed by consumer	
+Original Creditor:	COMENITY BANK	COMENITY BANK	COMENITY BANK
+Back to Top
+CAPITAL ONE
+	TransUnion	Experian	Equifax
+Account #:	517805******1234	517805******	517805******1234
+Account Type:	Revolving	Revolving	Revolving
+Account Status:	Open	Open	Open
+Monthly Payment:	$35.00	$35.00	$35.00
+Date Opened:	06/10/2019	06/01/2019	06/01/2019
+Balance:	$845.00	$845.00	$845.00
+High Credit:	$1,200.00	$1,200.00	$1,200.00
+Credit Limit:	$1,500.00	$1,500.00	$1,500.00
+Past Due:	$0.00	$0.00	$0.00
+Payment Status:	Current	Current	Current
+Last Reported:	08/20/2026	08/20/2026	08/20/2026
+	Aug	Jul	Jun	May	Apr	Mar
+TransUnion	
+OK
+	
+OK
+	
+30
+	
+OK
+	
+60
+	
+OK
+
+Experian	
+OK
+	
+OK
+	
+30
+	
+OK
+	
+OK
+	
+OK
+
+Equifax	
+OK
+	
+OK
+	
+30
+	
+OK
+	
+OK
+	
+OK
+Back to Top
+JPMCB CARD
+	TransUnion	Experian	Equifax
+Account #:	4266********	4266********	4266********
+Account Type:	Revolving	Revolving	Revolving
+Account Status:	Closed	Closed	Closed
+Balance:	$2,310.00	$2,310.00	$2,310.00
+Payment Status:	Charged Off	Charged Off	Charged Off
+Comments:	Charged off account	Profit and loss writeoff	Charged off account
+Back to Top
+PORTFOLIO RECOVERY
+	TransUnion	Experian	Equifax
+Account #:	-	601100******	-
+Account Type:	-	Open Account	-
+Account Type - Detail:	-	Factoring Company Account	-
+Balance:	-	$640.00	-
+Payment Status:	-	Collection	-
+Back to Top
+Public Information
+None Reported
+Inquiries
+Creditor Name	Type of Business	Date of inquiry	Credit Bureau
+CREDIT ONE BANK	Bank Credit Cards	07/12/2026	TransUnion
+WESTLAKE FINANCIAL	Auto Financing	05/02/2026	Experian
+WESTLAKE FINANCIAL	Auto Financing	05/02/2026	Equifax
+SYNCB/AMAZON	Bank Credit Cards	02/20/2026	TransUnion
+Creditor Contacts
+MIDLAND CREDIT MGMT	350 CAMINO DE LA REINA, SAN DIEGO, CA 92108	(800) 825-8131
