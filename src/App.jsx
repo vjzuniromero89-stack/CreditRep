@@ -37,7 +37,7 @@ function NotConfigured() {
   return (
     <div className="mx-auto mt-20 max-w-lg card p-6">
       <h1 className="text-xl font-bold">Falta configurar Supabase</h1>
-      <p className="mt-2 text-sm text-slate-600">Agrega las variables <code>VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code> en Vercel (Settings → Environment Variables) y vuelve a publicar.</p>
+      <p className="mt-2 text-sm text-slate-600">En Vercel → Settings → Environment Variables deben existir <code>SUPABASE_URL</code> y <code>SUPABASE_PUBLISHABLE_KEY</code> marcadas para <b>Production</b> (y Preview). Después ve a Deployments → ⋯ → <b>Redeploy</b>, porque las variables se leen al construir.</p>
     </div>
   );
 }

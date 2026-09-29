@@ -16,9 +16,11 @@
 
 | Nombre | Valor |
 |---|---|
-| `VITE_SUPABASE_URL` | Project URL |
-| `VITE_SUPABASE_ANON_KEY` | anon / publishable key |
-| `SUPABASE_SERVICE_ROLE_KEY` | service_role / secret key |
+| `SUPABASE_URL` | Project URL |
+| `SUPABASE_PUBLISHABLE_KEY` | publishable (o anon) key |
+| `SUPABASE_SECRET_KEY` | secret (o service_role) key |
+
+Márcalas para **Production** y **Preview**. Si cambias una variable, haz **Redeploy** (Deployments → ⋯ → Redeploy): se leen al construir la app.
 
 4. **Deploy**.
 
