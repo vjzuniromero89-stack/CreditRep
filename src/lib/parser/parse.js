@@ -82,7 +82,8 @@ function sectionOf(text) {
   if (/^(collections?|collection accounts)$/.test(t)) return 'collections';
   if (/^(public (information|records?)|public record information|bankruptcies|judgments)$/.test(t)) return 'public';
   if (/^(inquiries|credit inquiries|hard inquiries|inquiry|regular inquiries|inquiries \(.*\))$/.test(t)) return 'inquiries';
-  if (/^(creditor contacts?|creditor contact information|contact information|creditors contact|consumer statements?|messages)$/.test(t)) return 'ignore';
+  if (/^(creditor contacts?|creditor contact information|creditors contact|creditor addresses|contact information for creditors)$/.test(t)) return 'contacts';
+  if (/^(contact information|consumer statements?|messages)$/.test(t)) return 'ignore';
   return null;
 }
 
@@ -154,6 +155,7 @@ export function parseReport(rows, rawText = '') {
     personal: [],
     accounts: [],
     inquiries: [],
+    creditorContacts: [],
     summary: {},
     warnings: [],
   };
@@ -267,6 +269,13 @@ export function parseReport(rows, rawText = '') {
     const firstB = bureauOf(cells[0]);
     if (firstB && nonEmpty.length >= 4 && block) {
       block.history[firstB].push(...cells.slice(1).map((c) => c.trim().toUpperCase()));
+      continue;
+    }
+
+    // ---------- Contactos de acreedores (nombre | dirección | teléfono)
+    if (section === 'contacts') {
+      const c = parseContactRow(nonEmpty);
+      if (c) res.creditorContacts.push(c);
       continue;
     }
 
@@ -577,6 +586,18 @@ function parseInquiryRow(cells, ctxBureau, header, mapValues, row) {
     }
   }
   return out;
+}
+
+const PHONE_RE = /\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
+export function parseContactRow(cells) {
+  if (cells.length < 2) return null;
+  if (/creditor name|address|phone/i.test(cells[0]) && cells.length <= 3 && !/\d/.test(cells.join(''))) return null;
+  const name = cells[0].trim();
+  const rest = cells.slice(1).join(' | ');
+  const phone = (rest.match(PHONE_RE) || [])[0] || null;
+  const address = cells.slice(1).filter((c) => !PHONE_RE.test(c) || /\d{5}/.test(c.replace(PHONE_RE, ''))).map((c) => c.replace(PHONE_RE, '').trim()).filter(Boolean).join(', ').replace(/\s*\n\s*/g, ', ');
+  if (!name || !/[a-z]/i.test(name) || (!address && !phone)) return null;
+  return { name, address: address || null, phone };
 }
 
 export function detectProvider(text) {

@@ -24,6 +24,7 @@ function checkIIQ(r) {
   const addrTU = r.personal.filter((p) => p.bureau === 'TU' && p.category === 'direccion').map((p) => p.name);
   assert.deepEqual(addrTU, ['123 MAIN ST, WILMINGTON, DE 19801', '45 OAK AVE APT 2, NEWARK, DE 19711', '900 PINE RD, DOVER, DE 19901']);
   assert.equal(r.personal.filter((p) => p.category === 'alias').length, 3);
+  assert.equal(r.creditorContacts[0].address, '350 CAMINO DE LA REINA, SAN DIEGO, CA 92108');
 }
 
 test('IdentityIQ HTML', () => checkIIQ(html('iiq1.html')));

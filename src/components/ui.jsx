@@ -9,6 +9,7 @@ export function Button({ variant = 'primary', size = 'md', className, loading, c
     secondary: 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 shadow-sm',
     danger: 'bg-red-600 text-white hover:bg-red-700 shadow-sm',
     success: 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm',
+    violet: 'bg-violet-600 text-white hover:bg-violet-700 shadow-sm',
     ghost: 'text-slate-600 hover:bg-slate-100',
     dangerGhost: 'text-red-600 hover:bg-red-50',
   }[variant];

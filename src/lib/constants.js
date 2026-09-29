@@ -76,3 +76,12 @@ export const DISPUTE_REASONS = [
   'I did not authorize this inquiry.',
   'This information does not belong to me / is outdated.',
 ];
+
+export const TEMPLATE_PURPOSES = {
+  disputa_cuentas: 'Disputa de cuentas (bureau)',
+  personal: 'Limpiar información personal (bureau)',
+  inquiries: 'Inquiries (bureau)',
+  validacion: 'Validación de deuda (acreedor/cobrador)',
+  goodwill: 'Buena voluntad – pagos tarde (acreedor)',
+  otro: 'Otra',
+};

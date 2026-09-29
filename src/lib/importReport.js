@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { feeFor, isBillable } from './reportDiff';
 import { BUREAU_NAME } from './constants';
 import { money, today, toISODate } from './format';
+import { creditorNorm } from './packageBuilder';
 
 const ITEM_FIELDS = ['kind', 'category', 'bureau', 'name', 'account_number', 'original_creditor', 'account_type', 'balance', 'past_due',
   'high_credit', 'credit_limit', 'monthly_payment', 'date_opened', 'last_reported', 'item_date', 'account_status', 'payment_status',
@@ -125,7 +126,14 @@ export async function saveImport({ client, parsed, plan, file, settings, fillCli
     if (Object.keys(patch).length) await supabase.from('cr_clients').update(patch).eq('id', clientId);
   }
 
-  // 7) historial
+  // 7) directorio de acreedores (direcciones del reporte)
+  const contacts = (parsed.creditorContacts || []).filter((c) => c.address);
+  if (contacts.length) {
+    const rows = [...new Map(contacts.map((c) => [creditorNorm(c.name), { name: c.name, norm: creditorNorm(c.name), address: c.address, phone: c.phone }])).values()];
+    await supabase.from('cr_creditors').upsert(rows, { onConflict: 'norm', ignoreDuplicates: true });
+  }
+
+  // 8) historial
   activity.unshift(`📄 Reporte ${provider || parsed.provider} subido: ${summary.inserted} nuevos, ${summary.removed} eliminados, ${summary.reappeared} reinsertados` +
     (summary.charges ? `, ${summary.charges} cobros (${money(summary.chargeTotal)})` : ''));
   await supabase.from('cr_activity').insert(activity.map((message) => ({ client_id: clientId, message })));

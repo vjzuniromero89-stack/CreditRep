@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Save, UserPlus, KeyRound } from 'lucide-react';
+import { Save, UserPlus, KeyRound, Trash2, Plus } from 'lucide-react';
+import { creditorNorm } from '../../lib/packageBuilder';
 import { supabase } from '../../lib/supabase';
 import { callApi } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
@@ -22,10 +23,14 @@ export default function Settings() {
   const [busy, setBusy] = useState(false);
   const [na, setNa] = useState({ name: '', email: '', password: '' });
   const [pw, setPw] = useState('');
+  const [creds, setCreds] = useState([]);
+  const [cq, setCq] = useState('');
 
   const load = async () => {
     const [a, b] = await Promise.all([supabase.from('cr_settings').select('*').eq('id', 1).maybeSingle(), supabase.from('cr_admins').select('*').order('created_at')]);
     setS(a.data || { id: 1 }); setAdmins(b.data || []);
+    const { data: cr } = await supabase.from('cr_creditors').select('*').order('name');
+    setCreds(cr || []);
   };
   useEffect(() => { load(); }, []);
 
@@ -46,6 +51,13 @@ export default function Settings() {
     const { error } = await supabase.auth.updateUser({ password: pw });
     if (error) toast(error.message, 'error'); else { toast('Contraseña cambiada'); setPw(''); }
   };
+
+  const saveCred = async (c) => {
+    const row = { name: c.name, norm: creditorNorm(c.name), address: c.address || null, phone: c.phone || null, updated_at: new Date().toISOString() };
+    const { error } = c.id ? await supabase.from('cr_creditors').update(row).eq('id', c.id) : await supabase.from('cr_creditors').insert(row);
+    if (error) toast(error.message, 'error'); else { toast('Acreedor guardado'); load(); }
+  };
+  const delCred = async (c) => { await supabase.from('cr_creditors').delete().eq('id', c.id); load(); };
 
   if (!s) return <Spinner />;
   const set = (k) => (e) => setS({ ...s, [k]: e.target.value });
@@ -73,6 +85,24 @@ export default function Settings() {
             {['tu', 'ex', 'eq'].map((b) => <Field key={b} label={BUREAU_NAME[b.toUpperCase()]}><Textarea rows={4} value={s[`address_${b}`] || ''} onChange={set(`address_${b}`)} /></Field>)}
           </div>
           <p className="mt-2 text-xs text-slate-500">La primera línea es el nombre del destinatario. Verifica las direcciones vigentes en la página de cada bureau.</p>
+        </Card>
+        <Card title="Directorio de acreedores y agencias de cobro" className="lg:col-span-2"
+          actions={<><Input className="w-56" placeholder="Buscar…" value={cq} onChange={(e) => setCq(e.target.value)} /><Button size="sm" variant="secondary" icon={Plus} onClick={() => setCreds([{ name: '', address: '', phone: '', _new: true }, ...creds])}>Agregar</Button></>}>
+          <p className="mb-3 text-sm text-slate-500">Se llena solo con la sección "Creditor Contacts" de los reportes y con las direcciones que escribas en el asistente. Se usa para las cartas a acreedores.</p>
+          <div className="max-h-96 space-y-2 overflow-auto">
+            {creds.filter((c) => !cq || c.name.toLowerCase().includes(cq.toLowerCase())).map((c, i) => (
+              <div key={c.id || 'n' + i} className="grid gap-2 sm:grid-cols-[1fr_2fr_1fr_auto]">
+                <Input placeholder="Nombre" defaultValue={c.name} onChange={(e) => { c.name = e.target.value; }} />
+                <Input placeholder="Dirección" defaultValue={c.address || ''} onChange={(e) => { c.address = e.target.value; }} />
+                <Input placeholder="Teléfono" defaultValue={c.phone || ''} onChange={(e) => { c.phone = e.target.value; }} />
+                <div className="flex gap-1">
+                  <Button size="sm" variant="secondary" onClick={() => saveCred(c)}>Guardar</Button>
+                  {c.id && <button className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600" onClick={() => delCred(c)}><Trash2 className="h-4 w-4" /></button>}
+                </div>
+              </div>
+            ))}
+            {!creds.length && <p className="text-sm text-slate-400">Todavía no hay acreedores guardados.</p>}
+          </div>
         </Card>
         <Card title="Administradores">
           <ul className="mb-4 divide-y divide-slate-100 text-sm">

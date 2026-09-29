@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, FileUp, Mail, KeyRound, Trash2, Save, User, CreditCard, Search as SearchIcon, IdCard, FolderOpen, FileText, DollarSign, History, LayoutGrid, Download, TrendingUp, TrendingDown, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, FileUp, Mail, KeyRound, Trash2, Save, User, CreditCard, Search as SearchIcon, IdCard, FolderOpen, FileText, DollarSign, History, LayoutGrid, Download, TrendingUp, TrendingDown, CheckCircle2, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { callApi } from '../../lib/api';
 import { ACCOUNT_CATEGORIES, BUREAUS, BUREAU_NAME, CLIENT_STATUS } from '../../lib/constants';
@@ -15,6 +15,7 @@ import LetterWizard from '../../components/LetterWizard';
 import ChargesTable from '../../components/ChargesTable';
 import LettersTable from '../../components/LettersTable';
 import CredentialsModal from '../../components/CredentialsModal';
+import PackageBuilder from '../../components/PackageBuilder';
 
 export default function ClientDetail() {
   const { id } = useParams();
@@ -33,6 +34,7 @@ export default function ClientDetail() {
   const [importOpen, setImportOpen] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
   const [letterPre, setLetterPre] = useState([]);
+  const [pkgOpen, setPkgOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [newKind, setNewKind] = useState(null);
   const [creds, setCreds] = useState(null);
@@ -163,7 +165,8 @@ export default function ClientDetail() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button icon={FileUp} onClick={() => setImportOpen(true)}>Subir reporte</Button>
-          <Button variant="secondary" icon={Mail} onClick={() => { setLetterPre([]); setLetterOpen(true); }}>Generar cartas</Button>
+          <Button variant="violet" icon={Sparkles} onClick={() => setPkgOpen(true)}>Paquete de cartas</Button>
+          <Button variant="secondary" icon={Mail} onClick={() => { setLetterPre([]); setLetterOpen(true); }}>Carta manual</Button>
           <Button variant="secondary" icon={KeyRound} loading={busyCred} onClick={access}>{client.user_id ? 'Nueva contraseña' : 'Crear acceso'}</Button>
         </div>
       </div>
@@ -282,6 +285,7 @@ export default function ClientDetail() {
       {tab === 'cobros' && <ChargesTable charges={charges} clientId={id} onReload={loadRest} />}
       {tab === 'historial' && <Card><ActivityList list={activity} /></Card>}
 
+      <PackageBuilder open={pkgOpen} onClose={() => setPkgOpen(false)} client={client} items={items} onDone={() => { loadItems(); loadRest(); }} />
       <ImportReport open={importOpen} onClose={() => setImportOpen(false)} client={client} onDone={reloadAll} />
       <LetterWizard open={letterOpen} onClose={() => setLetterOpen(false)} client={client} items={items} preselect={letterPre} onDone={() => { loadItems(); loadRest(); }} />
       <ItemForm open={!!editItem || !!newKind} onClose={() => { setEditItem(null); setNewKind(null); }} item={editItem} kind={editItem?.kind || newKind || 'cuenta'} clientId={id} onSaved={() => { loadItems(); loadRest(); }} />

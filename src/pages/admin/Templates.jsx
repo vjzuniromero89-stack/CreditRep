@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Copy, Trash2, Save, Eye } from 'lucide-react';
+import { Plus, Copy, Trash2, Save, Eye, Upload } from 'lucide-react';
+import { TEMPLATE_PURPOSES } from '../../lib/constants';
+import ImportTemplates from '../../components/ImportTemplates';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { PLACEHOLDERS, renderLetter, bureauRecipient } from '../../lib/letters';
@@ -19,6 +21,7 @@ export default function Templates() {
   const [cur, setCur] = useState(null);
   const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const ta = useRef(null);
 
   const load = async (selectId) => {
@@ -31,7 +34,7 @@ export default function Templates() {
 
   const save = async () => {
     setBusy(true);
-    const row = { name: cur.name, recipient: cur.recipient, applies_to: cur.applies_to, round: Number(cur.round || 1), default_reason: cur.default_reason, body: cur.body, active: cur.active !== false };
+    const row = { name: cur.name, recipient: cur.recipient, applies_to: cur.applies_to, round: Number(cur.round || 1), default_reason: cur.default_reason, body: cur.body, active: cur.active !== false, purpose: cur.purpose || 'otro', attach_id: !!cur.attach_id, attach_bill: !!cur.attach_bill, attach_ssn: !!cur.attach_ssn };
     const res = cur.id ? await supabase.from('cr_templates').update(row).eq('id', cur.id).select().single() : await supabase.from('cr_templates').insert(row).select().single();
     setBusy(false);
     if (res.error) toast(res.error.message, 'error'); else { toast('Plantilla guardada'); load(res.data.id); }
@@ -55,7 +58,11 @@ export default function Templates() {
   return (
     <div>
       <PageHeader title="Plantillas de cartas" subtitle="Edita las cartas que se mandan a los bureaus y acreedores. Usa los campos {{...}} para llenar los datos del cliente automáticamente."
-        actions={<Button icon={Plus} onClick={() => setCur({ name: 'Nueva plantilla', recipient: 'bureau', applies_to: 'cuenta', round: 1, body: '', default_reason: '', active: true })}>Nueva plantilla</Button>} />
+        actions={<>
+          <Button variant="secondary" icon={Upload} onClick={() => setImportOpen(true)}>Importar (Word, Excel, PDF)</Button>
+          <Button icon={Plus} onClick={() => setCur({ name: 'Nueva plantilla', recipient: 'bureau', applies_to: 'cuenta', purpose: 'disputa_cuentas', round: 1, body: '', default_reason: '', active: true, attach_id: true, attach_bill: true, attach_ssn: false })}>Nueva plantilla</Button>
+        </>} />
+      <ImportTemplates open={importOpen} onClose={() => setImportOpen(false)} onDone={(id) => load(id)} />
       <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
         <div className="card divide-y divide-slate-100 self-start">
           {list.map((t) => (
@@ -64,6 +71,8 @@ export default function Templates() {
               <div className="mt-1 flex flex-wrap gap-1">
                 <Badge>{t.recipient === 'bureau' ? 'Bureaus' : 'Acreedor'}</Badge>
                 <Badge>R{t.round}</Badge>
+                {t.attach_id && <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">ID</Badge>}
+                {t.attach_bill && <Badge className="bg-emerald-50 text-emerald-700 ring-emerald-200">Bill</Badge>}
                 {!t.active && <Badge className="bg-slate-200 text-slate-500 ring-slate-300">Inactiva</Badge>}
               </div>
             </button>
@@ -81,9 +90,16 @@ export default function Templates() {
                 <Field label="Nombre" className="sm:col-span-2"><Input value={cur.name} onChange={(e) => setCur({ ...cur, name: e.target.value })} /></Field>
                 <Field label="Se envía a"><Select value={cur.recipient} onChange={(e) => setCur({ ...cur, recipient: e.target.value })} options={[['bureau', 'Bureaus (una por bureau)'], ['acreedor', 'Acreedor / cobrador']]} /></Field>
                 <Field label="Ronda"><Input type="number" min="1" value={cur.round} onChange={(e) => setCur({ ...cur, round: e.target.value })} /></Field>
+                <Field label="Tipo de carta (para el asistente)" className="sm:col-span-2"><Select value={cur.purpose || 'otro'} onChange={(e) => { const p = e.target.value; setCur({ ...cur, purpose: p, applies_to: p === 'inquiries' ? 'inquiry' : p === 'personal' ? 'personal' : cur.applies_to === 'todos' ? 'todos' : 'cuenta', recipient: ['validacion', 'goodwill'].includes(p) ? 'acreedor' : ['disputa_cuentas', 'personal', 'inquiries'].includes(p) ? 'bureau' : cur.recipient }); }} options={Object.entries(TEMPLATE_PURPOSES)} /></Field>
                 <Field label="Para disputar"><Select value={cur.applies_to} onChange={(e) => setCur({ ...cur, applies_to: e.target.value })} options={[['cuenta', 'Cuentas'], ['inquiry', 'Inquiries'], ['personal', 'Info personal'], ['todos', 'Todo']]} /></Field>
                 <Field label="Razón por defecto" className="sm:col-span-2"><Input value={cur.default_reason || ''} onChange={(e) => setCur({ ...cur, default_reason: e.target.value })} /></Field>
                 <label className="flex items-end gap-2 pb-2 text-sm"><input type="checkbox" checked={cur.active !== false} onChange={(e) => setCur({ ...cur, active: e.target.checked })} /> Activa</label>
+                <div className="flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 px-3 py-2 text-sm sm:col-span-4">
+                  <span className="font-semibold text-slate-600">Adjuntar al imprimir:</span>
+                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={!!cur.attach_id} onChange={(e) => setCur({ ...cur, attach_id: e.target.checked })} /> Copia de ID / licencia</label>
+                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={!!cur.attach_bill} onChange={(e) => setCur({ ...cur, attach_bill: e.target.checked })} /> Bill (comprobante de dirección)</label>
+                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={!!cur.attach_ssn} onChange={(e) => setCur({ ...cur, attach_ssn: e.target.checked })} /> Tarjeta de Seguro Social</label>
+                </div>
               </div>
               {preview ? (
                 <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-inner">

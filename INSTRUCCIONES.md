@@ -41,3 +41,9 @@ Márcalas para **Production** y **Preview**. Si cambias una variable, haz **Rede
 - Si un reporte no se lee bien, usa la opción *Pegar texto* o agrega/edita los items a mano. Mándame un reporte de ejemplo (con datos tapados) y ajusto el lector a ese formato exacto.
 - Los usuarios de los clientes entran solo con **usuario + contraseña** (sin email).
 - Pruebas del lector: `npm install` y luego `npm test`.
+
+## Actualización 2 — Paquete de cartas e importar plantillas
+- Si ya tenías la base de datos: corre `supabase/migration_002_paquetes.sql` en el SQL Editor (en tu proyecto CreditRep ya está aplicada).
+- **Plantillas → Importar (Word, Excel, PDF)**: convierte [Name], [Address], [Date], [Account…] a campos de la app. En Excel, columnas *Nombre* y *Carta* = una plantilla por fila.
+- En cada plantilla escoge el **Tipo de carta** y qué se adjunta (ID, bill, Seguro Social).
+- **Cliente → Paquete de cartas**: arma solo las cartas por bureau (info personal a limpiar, cuentas por ronda, inquiries), más las cartas a acreedores, con hoja de control por sobre. Imprime en orden TransUnion → Experian → Equifax → acreedores.

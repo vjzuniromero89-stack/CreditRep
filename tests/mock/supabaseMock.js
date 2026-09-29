@@ -27,7 +27,7 @@ class Q {
   constructor(table) { this.table = table; this.filters = []; this.op = 'select'; this.ord = []; }
   select(cols, opts = {}) { if (this.op === 'select') { this.head = opts.head; this.count = opts.count; } this.returning = true; return this; }
   insert(rows) { this.op = 'insert'; this.payload = rows; return this; }
-  upsert(rows) { this.op = 'upsert'; this.payload = rows; return this; }
+  upsert(rows, o = {}) { this.op = 'upsert'; this.payload = rows; this.onConflict = o.onConflict || 'id'; this.ignoreDup = o.ignoreDuplicates; return this; }
   update(p) { this.op = 'update'; this.payload = p; return this; }
   delete() { this.op = 'delete'; return this; }
   eq(c, v) { this.filters.push((r) => r[c] === v); return this; }
@@ -53,7 +53,7 @@ class Q {
       if (!isAdmin(d) && !['cr_documents'].includes(this.table)) return { data: null, error: { message: 'RLS: no permitido' } };
       const rows = Array.isArray(this.payload) ? this.payload : [this.payload];
       out = rows.map((r) => {
-        if (this.op === 'upsert') { const ex = all.find((x) => x.id === (r.id ?? 1)); if (ex) { Object.assign(ex, r); return ex; } }
+        if (this.op === 'upsert') { const k = this.onConflict; const ex = all.find((x) => x[k] === (r[k] ?? (k === 'id' ? 1 : undefined))); if (ex) { if (!this.ignoreDup) Object.assign(ex, r); return ex; } }
         return insert(d, this.table, r);
       });
       save(d);

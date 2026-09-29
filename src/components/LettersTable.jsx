@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Printer, Send, Trash2 } from 'lucide-react';
+import { Printer, Send, Trash2, Package } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { BUREAU_COLOR, BUREAU_NAME, LETTER_STATUS } from '../lib/constants';
 import { fmtDate, today } from '../lib/format';
@@ -46,7 +46,7 @@ export default function LettersTable({ letters, clients = {}, showClient, onRelo
                 <td className="td"><input type="checkbox" checked={sel.has(l.id)} onChange={() => toggle(l.id)} /></td>
                 <td className="td whitespace-nowrap">{fmtDate(l.created_at)}</td>
                 {showClient && <td className="td"><Link className="font-medium text-brand-700 hover:underline" to={`/admin/clientes/${l.client_id}`}>{clients[l.client_id] || '—'}</Link></td>}
-                <td className="td">{l.template_name}{l.round ? <span className="ml-1 text-xs text-slate-500">R{l.round}</span> : null}</td>
+                <td className="td">{l.template_name}{l.round ? <span className="ml-1 text-xs text-slate-500">R{l.round}</span> : null}{l.package_id && <div className="text-[11px] text-violet-600">Paquete · #{l.packet_order}</div>}</td>
                 <td className="td">{l.bureau ? <Badge className={BUREAU_COLOR[l.bureau]}>{BUREAU_NAME[l.bureau]}</Badge> : <span className="text-sm">{l.recipient_name}</span>}</td>
                 <td className="td">{l.item_ids?.length || 0}</td>
                 <td className="td">
@@ -55,6 +55,7 @@ export default function LettersTable({ letters, clients = {}, showClient, onRelo
                 </td>
                 <td className="td">
                   <div className="flex justify-end gap-0.5">
+                    {l.package_id && <button title="Imprimir paquete completo" className="rounded p-1 text-violet-500 hover:bg-violet-50" onClick={() => window.open(`/admin/imprimir?package=${l.package_id}`, '_blank')}><Package className="h-4 w-4" /></button>}
                     <button title="Imprimir" className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" onClick={() => print([l.id])}><Printer className="h-4 w-4" /></button>
                     <button title="Envío" className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" onClick={() => setEdit({ ...l, status: l.status === 'generada' ? 'enviada' : l.status, sent_at: l.sent_at || today() })}><Send className="h-4 w-4" /></button>
                     <button title="Borrar" className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600" onClick={() => del([l.id])}><Trash2 className="h-4 w-4" /></button>

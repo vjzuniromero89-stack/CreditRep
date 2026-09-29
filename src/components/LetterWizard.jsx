@@ -76,6 +76,9 @@ export default function LetterWizard({ open, onClose, client, items, preselect =
         round: tpl.round,
         item_ids: l.its.map((i) => i.id),
         attach_docs: attach,
+        attach_id: attach && (tpl.attach_id ?? true),
+        attach_bill: attach && (tpl.attach_bill ?? true),
+        attach_ssn: attach && !!tpl.attach_ssn,
         body_html: renderLetter({ template: tpl, client, recipientName: l.recipient_name, recipientAddress: l.recipient_address, bureau: l.bureau, items: l.its, reasons, defaultReason, settings }),
       }));
       const { data, error } = await supabase.from('cr_letters').insert(rows).select('id');
@@ -114,7 +117,7 @@ export default function LetterWizard({ open, onClose, client, items, preselect =
           </Field>
         </div>
         <div className="flex flex-wrap items-center gap-4 text-sm">
-          <label className="flex items-center gap-2"><input type="checkbox" checked={attach} onChange={(e) => setAttach(e.target.checked)} /> Adjuntar copia de licencia y bill al imprimir</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={attach} onChange={(e) => setAttach(e.target.checked)} /> Adjuntar documentos que pide la plantilla (ID / bill)</label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={markDispute} onChange={(e) => setMarkDispute(e.target.checked)} /> Marcar items como "En disputa"</label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={showRemoved} onChange={(e) => setShowRemoved(e.target.checked)} /> Mostrar eliminados</label>
           <Button size="sm" variant="secondary" icon={CheckSquare} onClick={selectAll}>Seleccionar todo</Button>
