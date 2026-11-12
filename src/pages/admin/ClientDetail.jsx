@@ -7,6 +7,7 @@ import { ACCOUNT_CATEGORIES, BUREAUS, BUREAU_NAME, CLIENT_COLS, CLIENT_STATUS } 
 import { fmtDate, fullName, money } from '../../lib/format';
 import { Badge, Button, Card, Field, Input, Select, Spinner, Tabs, Textarea, useConfirm, useToast, cx } from '../../components/ui';
 import ClientForm from '../../components/ClientForm';
+import { ConsentAdmin } from '../../components/Consent';
 import DocManager from '../../components/DocManager';
 import ItemsTable from '../../components/ItemsTable';
 import ItemForm from '../../components/ItemForm';
@@ -245,6 +246,7 @@ export default function ClientDetail() {
             <ClientForm value={form} onChange={setForm} savedLast4={client.ssn_last4} />
           </Card>
           <div className="space-y-5">
+            <ConsentAdmin clientId={id} />
             <Card title="Servicio">
               <div className="space-y-3">
                 <Field label="Estado del cliente"><Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} options={Object.entries(CLIENT_STATUS).map(([k, x]) => [k, x.label])} /></Field>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Mail, Printer, CheckSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { clientsBlocked } from '../lib/letterSend';
 import { useAuth } from '../lib/auth';
 import { ACCOUNT_CATEGORIES, BUREAUS, BUREAU_NAME, BUREAU_COLOR, DISPUTE_REASONS, ITEM_STATUS, PERSONAL_CATEGORIES } from '../lib/constants';
 import { bureauRecipient, renderLetter } from '../lib/letters';
@@ -47,6 +48,8 @@ export default function LetterWizard({ open, onClose, client, items, preselect =
     if (!client.address) { toast('El cliente no tiene dirección. Complétala en "Información personal".', 'error'); }
     setBusy(true);
     try {
+      // CROA: ningún servicio antes de que el contrato esté firmado y pasen los 3 días hábiles
+      if ((await clientsBlocked([client.id])).length) throw new Error('No se pueden preparar cartas todavía: el cliente debe firmar su contrato y deben pasar los 3 días hábiles para cancelar.');
       const letters = [];
       if (tpl.recipient === 'bureau') {
         for (const b of BUREAUS) {

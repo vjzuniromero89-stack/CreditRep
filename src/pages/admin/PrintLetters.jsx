@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { BUREAU_NAME, CLIENT_COLS, DOC_TYPES } from '../../lib/constants';
 import { fullName } from '../../lib/format';
 import { groupEnvelopes } from '../../lib/packageBuilder';
-import { markLettersSent } from '../../lib/letterSend';
+import { clientsBlocked, markLettersSent } from '../../lib/letterSend';
 import { Button, Spinner, useToast } from '../../components/ui';
 
 // Cartas viejas (generadas con {{cliente_ssn}}) pueden tener el SSN completo guardado: se imprime tapado.
@@ -69,7 +69,9 @@ export default function PrintLetters() {
         }
       }
       const envs = groupEnvelopes(letters);
-      setState({ letters, options, clients, docs, envs, pkgId });
+      let blocked;
+      try { blocked = await clientsBlocked(cids); } catch { blocked = cids; }   // si no se puede revisar, no se imprime
+      setState({ letters, options, clients, docs, envs, pkgId, blocked });
     })();
   }, [params]);
 
@@ -78,7 +80,8 @@ export default function PrintLetters() {
   };
 
   if (!state) return <Spinner label="Preparando el paquete…" />;
-  const { letters, options, clients, docs, envs } = state;
+  const { letters, options, clients, docs, envs, blocked } = state;
+  const stop = blocked.length > 0;   // CROA: nada sale sin contrato vigente y sin pasar los 3 días hábiles
 
   const attachments = (clientId, flags, keyp) => {
     const d = docs[clientId] || {};
@@ -100,10 +103,23 @@ export default function PrintLetters() {
     <div className="min-h-screen bg-slate-200 pb-10 print:bg-white print:pb-0">
       <div className="no-print sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-slate-300 bg-white px-4 py-3 shadow-sm">
         <b className="mr-auto">{letters.length} carta(s) · {envs.length} sobre(s){state.pkgId ? ' · paquete completo' : ''}</b>
-        <Button icon={Printer} onClick={() => window.print()}>Imprimir todo</Button>
-        <Button variant="secondary" icon={Send} onClick={markSent}>Marcar como enviadas</Button>
+        <Button icon={Printer} disabled={stop} onClick={async () => {
+          // se revisa otra vez: el cliente pudo cancelar desde que se abrió esta página
+          try {
+            const now = await clientsBlocked(letters.map((l) => l.client_id));
+            if (now.length) { setState((s) => ({ ...s, blocked: now })); return; }
+            window.print();
+          } catch (e) { toast(e.message, 'error'); }
+        }}>Imprimir todo</Button>
+        <Button variant="secondary" icon={Send} disabled={stop} onClick={markSent}>Marcar como enviadas</Button>
         <Button variant="ghost" icon={X} onClick={() => window.close()}>Cerrar</Button>
       </div>
+      {stop && (
+        <div className="mx-auto my-4 w-[8.5in] max-w-full rounded-lg bg-red-100 px-4 py-3 text-sm text-red-800">
+          No se puede imprimir ni enviar: {blocked.map((id) => fullName(clients[id])).join(', ')} no tiene el contrato firmado y vigente, o todavía está en los 3 días hábiles para cancelar. Lo puedes revisar en su ficha → Datos del cliente.
+        </div>
+      )}
+      <div className={stop ? 'print:hidden' : ''}>
       {envs.flatMap((env, ei) => {
         const c = clients[env.client] || {};
         const first = env.letters[0];
@@ -138,6 +154,7 @@ export default function PrintLetters() {
         if (options.attachMode !== 'carta') pages.push(...attachments(env.client, union, `env${ei}`));
         return pages;
       })}
+      </div>
       {!letters.length && <p className="p-10 text-center">No se encontraron las cartas.</p>}
     </div>
   );

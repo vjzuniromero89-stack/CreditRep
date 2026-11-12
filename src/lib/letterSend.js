@@ -1,25 +1,27 @@
 import { supabase } from './supabase';
 import { today } from './format';
-import { roundUpdates } from './packageBuilder';
+import { consentState } from './consent';
+
+// Clientes de estas cartas que todavía no permiten enviar (sin firmar, cancelado o en los 3 días hábiles)
+export async function clientsBlocked(clientIds) {
+  const ids = [...new Set(clientIds)].filter(Boolean);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from('cr_consents').select('client_id,cancelled_at,can_start_at').in('client_id', ids).is('cancelled_at', null);
+  if (error) throw error;
+  const ok = new Set((data || []).filter((r) => consentState(r) === 'vigente').map((r) => r.client_id));
+  return ids.filter((id) => !ok.has(id));
+}
 
 // La ronda de cada cuenta sube cuando la carta SALE, no cuando se genera.
-// Así, borrar una carta que nunca se mandó no deja la cuenta en una ronda que no pasó.
-// Orden: primero las cuentas y al final la carta. Si algo falla a medias, la carta sigue sin
-// "enviada" y al reintentar se repite todo; Math.max hace que repetir no suba la ronda dos veces.
+// Todo pasa en una sola transacción en la base (cr_mark_letters_sent): si el contrato no lo permite,
+// el trigger rechaza la carta y no se cambia ninguna ronda.
 export async function markLettersSent(letters, { sentAt = today(), tracking } = {}) {
   if (!letters.length) return;
-  const upd = roundUpdates(letters.filter((l) => l.status !== 'enviada'));
-  if (upd.size) {
-    const { data: items, error: e2 } = await supabase.from('cr_items').select('id,status,dispute_round').in('id', [...upd.keys()]);
-    if (e2) throw e2;
-    // shortcut: leer y escribir no es atómico; con dos admins enviando a la vez la ronda podría quedar baja. Pasar a un RPC si hay más de un admin.
-    const res = await Promise.all((items || []).filter((i) => i.status !== 'eliminada').map((i) => supabase.from('cr_items')
-      .update({ status: 'en_disputa', dispute_round: Math.max(i.dispute_round || 0, upd.get(i.id)), last_dispute_at: sentAt }).eq('id', i.id)));
-    const bad = res.find((r) => r.error);
-    if (bad) throw bad.error;
+  if ((await clientsBlocked(letters.map((l) => l.client_id))).length) {
+    throw new Error('No se puede enviar: el cliente no ha firmado el contrato, lo canceló, o todavía no pasan los 3 días hábiles para cancelar.');
   }
-  const patch = { status: 'enviada', sent_at: sentAt };
-  if (tracking !== undefined) patch.tracking_number = tracking || null;
-  const { error } = await supabase.from('cr_letters').update(patch).in('id', letters.map((l) => l.id));
+  const { error } = await supabase.rpc('cr_mark_letters_sent', {
+    p_ids: letters.map((l) => l.id), p_sent_at: sentAt, p_tracking: tracking ?? null, p_set_tracking: tracking !== undefined,
+  });
   if (error) throw error;
 }

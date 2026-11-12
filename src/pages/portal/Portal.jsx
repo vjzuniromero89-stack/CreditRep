@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LogOut, ShieldCheck, CheckCircle2, User, FolderOpen, PartyPopper, Mail, AlertOctagon, Loader2 } from 'lucide-react';
+import { LogOut, ShieldCheck, CheckCircle2, User, FolderOpen, PartyPopper, Mail, AlertOctagon, Loader2, FileSignature } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { BUREAU_NAME, BUREAU_COLOR, ACCOUNT_CATEGORIES, PERSONAL_CATEGORIES } from '../../lib/constants';
@@ -7,6 +7,8 @@ import { fmtDate, fullName } from '../../lib/format';
 import { Badge, Button, Card, useToast, cx } from '../../components/ui';
 import ClientForm from '../../components/ClientForm';
 import DocManager from '../../components/DocManager';
+import { ConsentStep, useConsent } from '../../components/Consent';
+import { consentState } from '../../lib/consent';
 
 const EDITABLE = ['first_name', 'middle_name', 'last_name', 'suffix', 'dob', 'ssn', 'email', 'phone', 'phone2', 'address', 'address2', 'city', 'state', 'zip', 'prev_address', 'employer'];
 const REQUIRED = [['first_name', 'Nombre'], ['last_name', 'Apellido'], ['dob', 'Fecha de nacimiento'], ['phone', 'Teléfono'], ['address', 'Dirección'], ['city', 'Ciudad'], ['state', 'Estado'], ['zip', 'ZIP']];
@@ -16,10 +18,11 @@ export default function Portal() {
   const toast = useToast();
   const [form, setForm] = useState(null);
   const [docs, setDocs] = useState([]);
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(null);   // null = cargando (el contrato no se arma con una lista vacía)
   const [letters, setLetters] = useState(0);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [consent, reloadConsent] = useConsent(client?.id);
 
   useEffect(() => { if (client) setForm(Object.fromEntries(EDITABLE.map((k) => [k, client[k] ?? '']))); }, [client]);
   useEffect(() => {
@@ -36,11 +39,13 @@ export default function Portal() {
   const ssnOk = ssnTyped.length === 9 || (!ssnTyped && !!client.ssn_last4);
   const hasLicense = docs.some((d) => d.doc_type === 'licencia_frente');
   const hasBill = docs.some((d) => d.doc_type === 'bill');
+  const signed = ['espera', 'vigente'].includes(consentState(consent));
 
   const save = async (complete) => {
     if (complete) {
       if (missing.length) { toast('Falta: ' + missing.map((m) => m[1]).join(', '), 'error'); return; }
       if (!hasLicense || !hasBill) { toast('Sube la foto de tu licencia (frente) y de un bill', 'error'); return; }
+      if (!signed && !client.intake_completed) { toast('Falta firmar tu contrato (paso 3)', 'error'); return; }
     }
     if ((complete || ssnTyped) && !ssnOk) { toast('El Seguro Social debe tener 9 dígitos', 'error'); return; }
     setBusy(true);
@@ -56,9 +61,10 @@ export default function Portal() {
     refreshClient();
   };
 
-  const removed = items.filter((i) => i.status === 'eliminada' && (i.kind !== 'cuenta' || i.is_negative));
-  const disputing = items.filter((i) => i.status === 'en_disputa').length;
-  const activeNeg = items.filter((i) => i.kind === 'cuenta' && i.is_negative && i.status !== 'eliminada').length;
+  const list = items || [];
+  const removed = list.filter((i) => i.status === 'eliminada' && (i.kind !== 'cuenta' || i.is_negative));
+  const disputing = list.filter((i) => i.status === 'en_disputa').length;
+  const activeNeg = list.filter((i) => i.kind === 'cuenta' && i.is_negative && i.status !== 'eliminada').length;
   const showForm = !client.intake_completed || editing;
 
   return (
@@ -74,13 +80,14 @@ export default function Portal() {
       <main className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
         <div>
           <h1 className="text-2xl font-bold">Hola, {client.first_name || fullName(client)} 👋</h1>
-          <p className="text-slate-500">{client.intake_completed ? 'Aquí puedes ver el progreso de tu caso.' : 'Completa estos 2 pasos para empezar tu proceso de reparación de crédito.'}</p>
+          <p className="text-slate-500">{client.intake_completed ? 'Aquí puedes ver el progreso de tu caso.' : 'Completa estos 3 pasos para empezar tu proceso de reparación de crédito.'}</p>
         </div>
 
         {!client.intake_completed && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <StepBox n={1} icon={User} title="Tu información" done={!missing.length && ssnOk} />
             <StepBox n={2} icon={FolderOpen} title="Licencia y bill" done={hasLicense && hasBill} />
+            <StepBox n={3} icon={FileSignature} title="Tu contrato" done={signed} />
           </div>
         )}
 
@@ -110,6 +117,7 @@ export default function Portal() {
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" icon={User} onClick={() => setEditing(true)}>Actualizar mi información</Button>
             </div>
+            <Card title="Mi contrato"><ConsentStep client={client} items={items} row={consent} reload={reloadConsent} /></Card>
             <Card title="Mis documentos"><DocManager clientId={client.id} uploadedBy="cliente" types={['licencia_frente', 'licencia_atras', 'bill']} onChange={setDocs} /></Card>
           </>
         )}
@@ -124,6 +132,11 @@ export default function Portal() {
               <p className="mb-3 text-sm text-slate-500">Desde el celular toca <b>Tomar foto</b>. El bill (luz, agua, teléfono, banco) debe mostrar tu nombre y dirección actual.</p>
               <DocManager clientId={client.id} uploadedBy="cliente" types={['licencia_frente', 'licencia_atras', 'bill']} onChange={setDocs} highlight={['licencia_frente', 'bill']} />
             </Card>
+            {!client.intake_completed && (
+              <Card title="Paso 3 — Tu contrato">
+                <ConsentStep client={{ ...client, ...form }} items={items} row={consent} reload={reloadConsent} />
+              </Card>
+            )}
             <div className="flex flex-wrap justify-end gap-2">
               {editing && <Button variant="ghost" onClick={() => setEditing(false)}>Cancelar</Button>}
               <Button variant="secondary" loading={busy} onClick={() => save(false)}>Guardar y seguir después</Button>

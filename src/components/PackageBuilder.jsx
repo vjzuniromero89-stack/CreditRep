@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth';
 import { BUREAU_NAME, BUREAU_COLOR, ACCOUNT_CATEGORIES, PERSONAL_CATEGORIES } from '../lib/constants';
 import { buildPackage, PACKET_ORDER, creditorNorm, envelopeKey } from '../lib/packageBuilder';
 import { bureauRecipient, renderLetter } from '../lib/letters';
+import { clientsBlocked } from '../lib/letterSend';
 import { money, today, fullName } from '../lib/format';
 import { Badge, Button, Input, Modal, Select, Spinner, Textarea, useToast, cx } from './ui';
 
@@ -25,7 +26,8 @@ export default function PackageBuilder({ open, onClose, client, items, onDone })
       supabase.from('cr_templates').select('*').eq('active', true).order('round'),
       supabase.from('cr_documents').select('doc_type').eq('client_id', client.id),
       supabase.from('cr_creditors').select('*'),
-    ]).then(([t, d, c]) => setData({ templates: t.data || [], docs: d.data || [], creditors: c.data || [] }));
+      clientsBlocked([client.id]),
+    ]).then(([t, d, c, b]) => setData({ templates: t.data || [], docs: d.data || [], creditors: c.data || [], blocked: b.length > 0 }));
   }, [open, client.id]);
 
   const pkg = useMemo(() => (data ? buildPackage({ client, items, templates: data.templates, docs: data.docs, creditors: data.creditors, options: opt }) : null), [data, client, items, opt]);
@@ -79,10 +81,16 @@ export default function PackageBuilder({ open, onClose, client, items, onDone })
       footer={<>
         <span className="mr-auto self-center text-sm text-slate-600"><b>{enabled.length}</b> cartas en <b>{envelopes}</b> sobres · orden de impresión: TransUnion → Experian → Equifax → Acreedores</span>
         <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-        <Button icon={Printer} loading={busy} disabled={!enabled.length} onClick={generate}>Generar paquete e imprimir</Button>
+        <Button icon={Printer} loading={busy} disabled={!enabled.length || !data || data.blocked} onClick={generate}>Generar paquete e imprimir</Button>
       </>}>
       {!pkg ? <Spinner label="Analizando el reporte del cliente…" /> : (
         <div className="space-y-4">
+          {data.blocked && (
+            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              No se pueden preparar cartas todavía: el cliente debe firmar su contrato y deben pasar los 3 días hábiles para cancelar. La ley CROA no permite dar ningún servicio antes.
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
             <Toggle k="cleanPersonal">Limpiar info personal</Toggle>
             <Toggle k="inquiries">Inquiries</Toggle>
