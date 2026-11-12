@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ACCOUNT_CATEGORIES, BUREAUS, BUREAU_NAME, ITEM_STATUS, PERSONAL_CATEGORIES } from '../lib/constants';
 import { matchKey } from '../lib/parser/parse';
-import { feeFor } from '../lib/reportDiff';
+import { feeFor, isBillable } from '../lib/reportDiff';
 import { itemLabel } from '../lib/importReport';
 import { today } from '../lib/format';
 import { useAuth } from '../lib/auth';
@@ -44,6 +44,7 @@ export default function ItemForm({ open, onClose, item, kind: kind0 = 'cuenta', 
       if (kind === 'inquiry') row.category = 'inquiry';
       if (item && item.category !== row.category) row.extra = { ...(row.extra || {}), manual_category: true };
       ['id', 'created_at', 'updated_at', 'client_no'].forEach((k) => delete row[k]);
+      Object.keys(row).forEach((k) => { if (k.startsWith('_')) delete row[k]; });   // campos solo de pantalla (p. ej. _g)
       const becameRemoved = row.status === 'eliminada' && item?.status !== 'eliminada';
       if (becameRemoved && !row.removed_at) row.removed_at = today();
       if (row.status !== 'eliminada') { row.removed_at = null; }
@@ -56,7 +57,7 @@ export default function ItemForm({ open, onClose, item, kind: kind0 = 'cuenta', 
         });
         const { data, error } = await supabase.from('cr_items').insert(rows).select();
         if (error) throw error;
-        if (becameRemoved && makeCharge) await createCharges(data);
+        if (becameRemoved && makeCharge) await createCharges(data.filter((it) => isBillable(it, settings)));
         toast(rows.length > 1 ? `Se crearon ${rows.length} items (uno por bureau)` : 'Guardado');
       } else {
         row.match_key = matchKey(kind, row);
@@ -64,7 +65,7 @@ export default function ItemForm({ open, onClose, item, kind: kind0 = 'cuenta', 
         if (error) throw error;
         if (becameRemoved) {
           await supabase.from('cr_activity').insert({ client_id: clientId, message: `✅ Marcado como eliminado: ${itemLabel({ ...row, kind })}` });
-          if (makeCharge) await createCharges([{ ...row, id: item.id, kind }]);
+          if (makeCharge && isBillable({ ...row, kind }, settings)) await createCharges([{ ...row, id: item.id, kind }]);
         }
         toast('Cambios guardados');
       }
@@ -75,6 +76,7 @@ export default function ItemForm({ open, onClose, item, kind: kind0 = 'cuenta', 
   };
 
   const createCharges = async (items) => {
+    if (!items.length) return;
     const rows = items.map((it) => ({ client_id: clientId, item_id: it.id, description: `Eliminación — ${itemLabel(it)}`, amount: feeFor(it, settings), status: 'pendiente' }));
     await supabase.from('cr_charges').insert(rows);
   };
@@ -139,7 +141,7 @@ export default function ItemForm({ open, onClose, item, kind: kind0 = 'cuenta', 
           <Field label="Cobro por eliminar ($)" hint={`Vacío = usa el precio de Configuración (${feeFor({ ...f, kind, fee: null }, settings)})`}><Input type="number" step="0.01" value={v('fee')} onChange={set('fee')} /></Field>
           {f.status === 'eliminada' && <Field label="Fecha eliminada"><Input type="date" value={v('removed_at')} onChange={set('removed_at')} /></Field>}
         </div>
-        {f.status === 'eliminada' && item?.status !== 'eliminada' && (
+        {f.status === 'eliminada' && item?.status !== 'eliminada' && isBillable({ ...f, kind, is_negative: kind === 'cuenta' ? f.category !== 'positiva' : kind === 'inquiry' }, settings) && (
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={makeCharge} onChange={(e) => setMakeCharge(e.target.checked)} /> Crear cobro al cliente por esta eliminación</label>
         )}
         <Field label="Notas internas"><Textarea rows={2} value={v('notes')} onChange={set('notes')} /></Field>

@@ -10,7 +10,7 @@ import { ACCOUNT_CATEGORIES, BUREAUS, BUREAU_NAME, BUREAU_COLOR, PERSONAL_CATEGO
 import { money } from '../lib/format';
 import { Badge, Button, Field, Input, Modal, Select, Tabs, Textarea, useToast, cx } from './ui';
 
-const PROVIDERS = ['IdentityIQ', 'SmartCredit', 'MyScoreIQ', 'MyFreeScoreNow', 'Tri-merge (hipotecario)', 'Otro'];
+const PROVIDERS = ['AnnualCreditReport', 'IdentityIQ', 'SmartCredit', 'MyScoreIQ', 'MyFreeScoreNow', 'Tri-merge (hipotecario)', 'Otro'];
 
 export default function ImportReport({ open, onClose, client, onDone }) {
   const { settings } = useAuth();
@@ -23,6 +23,7 @@ export default function ImportReport({ open, onClose, client, onDone }) {
   const [parsed, setParsed] = useState(null);
   const [items, setItems] = useState([]);
   const [excluded, setExcluded] = useState(new Set());
+  const [keep, setKeep] = useState(new Set());   // ids que NO se marcan como eliminados
   const [existing, setExisting] = useState([]);
   const [provider, setProvider] = useState('');
   const [reportDate, setReportDate] = useState('');
@@ -33,7 +34,7 @@ export default function ImportReport({ open, onClose, client, onDone }) {
 
   useEffect(() => {
     if (!open) return;
-    setStep('pick'); setFile(null); setText(''); setParsed(null); setItems([]); setExcluded(new Set()); setResult(null); setTab('cuentas');
+    setStep('pick'); setFile(null); setText(''); setParsed(null); setItems([]); setExcluded(new Set()); setKeep(new Set()); setResult(null); setTab('cuentas');
     supabase.from('cr_items').select('*').eq('client_id', client.id).then(({ data }) => setExisting(data || []));
   }, [open, client.id]);
 
@@ -66,8 +67,10 @@ export default function ImportReport({ open, onClose, client, onDone }) {
       ...base,
       allInserts: base.inserts,
       inserts: base.inserts.filter((it) => !skip(it)),
+      allRemoved: base.removed,
+      removed: base.removed.filter((e) => !keep.has(e.id)),   // lo desmarcado sigue en el reporte (el lector no lo vio): no se cobra
     };
-  }, [parsed, items, existing, excluded, onlyNeg]);
+  }, [parsed, items, existing, excluded, onlyNeg, keep]);
 
   const statusOf = (it) => {
     if (!plan) return null;
@@ -76,12 +79,14 @@ export default function ImportReport({ open, onClose, client, onDone }) {
   };
 
   const toggle = (k) => { const s = new Set(excluded); s.has(k) ? s.delete(k) : s.add(k); setExcluded(s); };
-  const setCat = (k, category) => setItems(items.map((it) => (it._k === k ? { ...it, category, is_negative: category !== 'positiva' } : it)));
+  const toggleKeep = (id) => { const s = new Set(keep); s.has(id) ? s.delete(id) : s.add(id); setKeep(s); };
+  // manual_category: que el próximo reporte no le cambie la categoría que escogiste aquí
+  const setCat = (k, category) => setItems(items.map((it) => (it._k === k ? { ...it, category, is_negative: category !== 'positiva', extra: { ...(it.extra || {}), manual_category: true } } : it)));
 
   const save = async () => {
     setBusy(true);
     try {
-      const { allInserts, ...rest } = plan;
+      const { allInserts, allRemoved, ...rest } = plan;
       const cleanPlan = { ...rest, inserts: plan.inserts.map(({ _k, ...r }) => r) };
       const { summary } = await saveImport({ client, parsed, plan: cleanPlan, file: mode === 'file' ? file : null, settings, provider, reportDate });
       setResult(summary); setStep('done');
@@ -131,7 +136,7 @@ export default function ImportReport({ open, onClose, client, onDone }) {
               <FileUp className="h-10 w-10 text-brand-500" />
               {file ? <p className="font-semibold text-slate-800">{file.name} <span className="font-normal text-slate-500">({Math.round(file.size / 1024)} KB)</span></p> :
                 <p className="font-medium text-slate-700">Arrastra aquí el reporte o haz clic para escogerlo</p>}
-              <p className="text-xs text-slate-500">IdentityIQ, SmartCredit, MyScoreIQ, MyFreeScoreNow · PDF, página guardada (.html / .mhtml) o .txt</p>
+              <p className="text-xs text-slate-500">AnnualCreditReport.com, IdentityIQ, SmartCredit, MyScoreIQ, MyFreeScoreNow · PDF, página guardada (.html / .mhtml) o .txt</p>
               <input type="file" className="hidden" accept=".pdf,.html,.htm,.mhtml,.txt" onChange={(e) => setFile(e.target.files[0])} />
             </label>
           ) : (
@@ -174,16 +179,18 @@ export default function ImportReport({ open, onClose, client, onDone }) {
             <SummaryBox tone="red" label="Reinsertados" value={plan.reappeared.length} />
           </div>
 
-          {plan.removed.length > 0 && (
+          {plan.allRemoved.length > 0 && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-              <div className="mb-2 flex items-center gap-2 font-semibold text-emerald-800"><Trash2 className="h-4 w-4" /> Ya no aparecen en este reporte — se marcarán como ELIMINADOS</div>
+              <div className="mb-1 flex items-center gap-2 font-semibold text-emerald-800"><Trash2 className="h-4 w-4" /> Ya no aparecen en este reporte — se marcarán como ELIMINADOS</div>
+              <p className="mb-2 text-xs text-emerald-900/80">Revisa cada uno. Si sigue en el reporte (el lector no lo vio), desmárcalo: no se marca ni se cobra.</p>
               <ul className="space-y-1 text-sm">
-                {plan.removed.map((e) => (
-                  <li key={e.id} className="flex flex-wrap items-center gap-2">
+                {plan.allRemoved.map((e) => (
+                  <li key={e.id} className={cx('flex flex-wrap items-center gap-2', keep.has(e.id) && 'opacity-50')}>
+                    <input type="checkbox" checked={!keep.has(e.id)} onChange={() => toggleKeep(e.id)} aria-label={`Marcar ${e.name} como eliminado`} />
                     <Badge className={BUREAU_COLOR[e.bureau]}>{e.bureau}</Badge>
                     <span className="font-medium">{e.name}</span>
                     <span className="text-slate-500">{e.kind === 'cuenta' ? (ACCOUNT_CATEGORIES[e.category]?.label || '') : e.kind === 'inquiry' ? 'Inquiry' : PERSONAL_CATEGORIES[e.category]}</span>
-                    {isBillable(e, settings) && <Badge className="bg-emerald-600 text-white ring-emerald-600">Cobrar {money(feeFor(e, settings))}</Badge>}
+                    {isBillable(e, settings) && !keep.has(e.id) && <Badge className="bg-emerald-600 text-white ring-emerald-600">Cobrar {money(feeFor(e, settings))}</Badge>}
                   </li>
                 ))}
               </ul>

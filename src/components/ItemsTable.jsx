@@ -28,9 +28,9 @@ export default function ItemsTable({ items, kind, onEdit, onAdd, onReload, onLet
       && (!q || `${i.name} ${i.account_number || ''} ${i.original_creditor || ''}`.toLowerCase().includes(q.toLowerCase())));
     list.sort((a, b) => (a.name || '').localeCompare(b.name || '') || (a.account_number || '').localeCompare(b.account_number || '') || BUREAUS.indexOf(a.bureau) - BUREAUS.indexOf(b.bureau));
     // grupos (la misma cuenta en varios bureaus)
+    // copia: no se escribe en los objetos compartidos (si no, `_g` se manda en el update y Supabase lo rechaza)
     let g = 0; let prev = null;
-    list.forEach((i) => { const k = `${i.name}|${(i.account_number || '').replace(/\D/g, '').slice(0, 4)}`; if (k !== prev) g++; prev = k; i._g = g; });
-    return list;
+    return list.map((i) => { const k = `${i.name}|${(i.account_number || '').replace(/\D/g, '').slice(0, 4)}`; if (k !== prev) g++; prev = k; return { ...i, _g: g }; });
   }, [items, kind, bureau, cat, status, onlyNeg, q]);
 
   const toggle = (id) => { const s = new Set(sel); s.has(id) ? s.delete(id) : s.add(id); setSel(s); };

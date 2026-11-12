@@ -99,7 +99,8 @@ export async function saveImport({ client, parsed, plan, file, settings, fillCli
   if (fillClient) {
     const sug = suggestClientFields(parsed);
     const patch = {};
-    Object.entries(sug).forEach(([k, v]) => { if (v && !client[k]) patch[k] = v; });
+    // el SSN no se lee en el navegador (client.ssn viene vacío): solo se llena si no hay ninguno guardado
+    Object.entries(sug).forEach(([k, v]) => { if (v && !client[k] && !(k === 'ssn' && client.ssn_last4)) patch[k] = v; });
     if (Object.keys(patch).length) await supabase.from('cr_clients').update(patch).eq('id', clientId);
   }
 

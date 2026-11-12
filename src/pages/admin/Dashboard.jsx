@@ -43,7 +43,6 @@ export default function Dashboard() {
   }, []);
 
   if (!d) return <Spinner />;
-  const signupUrl = `${window.location.origin}/registro`;
   return (
     <div className="space-y-6">
       <PageHeader title="Panel" subtitle={new Date().toLocaleDateString('es-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} />
@@ -53,7 +52,7 @@ export default function Dashboard() {
         <Stat icon={CheckCircle2} tone="green" label="Eliminadas este mes" value={d.removedMonth} sub={`${d.removedTotal} en total`} onClick={() => nav('/admin/cobros')} />
         <Stat icon={DollarSign} tone="amber" label="Por cobrar" value={money(d.pending)} sub="cobros pendientes por eliminaciones" onClick={() => nav('/admin/cobros')} />
         <Stat icon={Mail} tone="slate" label="Cartas este mes" value={d.lettersMonth} onClick={() => nav('/admin/cartas')} />
-        <Stat icon={UserPlus} tone="brand" label="Registros nuevos" value={d.newOnes.length} sub="desde el portal, sin revisar" onClick={() => nav('/admin/clientes')} />
+        <Stat icon={UserPlus} tone="brand" label="Sin revisar" value={d.newOnes.length} sub="clientes que aún no abres" onClick={() => nav('/admin/clientes')} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -81,8 +80,8 @@ export default function Dashboard() {
             </ul>
           )}
         </Card>
-        <Card title="Registros nuevos del portal" bodyClass="p-0">
-          {!d.newOnes.length ? <p className="p-4 text-sm text-slate-500">No hay registros nuevos.</p> : (
+        <Card title="Clientes sin revisar" bodyClass="p-0">
+          {!d.newOnes.length ? <p className="p-4 text-sm text-slate-500">No hay clientes sin revisar.</p> : (
             <ul className="divide-y divide-slate-100">
               {d.newOnes.map((c) => (
                 <li key={c.id} className="flex items-center justify-between px-4 py-2.5">
@@ -92,10 +91,6 @@ export default function Dashboard() {
               ))}
             </ul>
           )}
-          <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-            <span className="truncate">Enlace de registro para clientes: <b>{signupUrl}</b></span>
-            <button className="flex items-center gap-1 font-semibold text-brand-700" onClick={() => { navigator.clipboard.writeText(signupUrl); toast('Enlace copiado'); }}><Copy className="h-3.5 w-3.5" />Copiar</button>
-          </div>
         </Card>
         <Card title="Actividad reciente">
           <ul className="space-y-2.5">

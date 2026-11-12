@@ -20,7 +20,7 @@ export async function compressImage(file, max = 1800, quality = 0.85) {
   } catch { return file; }
 }
 
-export default function DocManager({ clientId, uploadedBy = 'admin', types = Object.keys(DOC_TYPES), onChange, highlight = [] }) {
+export default function DocManager({ clientId, uploadedBy = 'admin', types = Object.keys(DOC_TYPES).filter((t) => t !== 'ssn'), onChange, highlight = [] }) {
   const [docs, setDocs] = useState([]);
   const [urls, setUrls] = useState({});
   const [busy, setBusy] = useState(null);

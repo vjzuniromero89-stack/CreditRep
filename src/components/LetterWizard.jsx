@@ -16,7 +16,6 @@ export default function LetterWizard({ open, onClose, client, items, preselect =
   const [reasons, setReasons] = useState({});
   const [defaultReason, setDefaultReason] = useState('');
   const [attach, setAttach] = useState(true);
-  const [markDispute, setMarkDispute] = useState(true);
   const [showRemoved, setShowRemoved] = useState(false);
   const [creditorAddr, setCreditorAddr] = useState({});
   const [busy, setBusy] = useState(false);
@@ -78,14 +77,12 @@ export default function LetterWizard({ open, onClose, client, items, preselect =
         attach_docs: attach,
         attach_id: attach && (tpl.attach_id ?? true),
         attach_bill: attach && (tpl.attach_bill ?? true),
-        attach_ssn: attach && !!tpl.attach_ssn,
+        attach_ssn: false,   // la tarjeta del SSN nunca va en un sobre
         body_html: renderLetter({ template: tpl, client, recipientName: l.recipient_name, recipientAddress: l.recipient_address, bureau: l.bureau, items: l.its, reasons, defaultReason, settings }),
       }));
       const { data, error } = await supabase.from('cr_letters').insert(rows).select('id');
       if (error) throw error;
-      if (markDispute) {
-        await Promise.all(chosen.filter((i) => i.status !== 'eliminada').map((i) => supabase.from('cr_items').update({ status: 'en_disputa', dispute_round: Math.max(i.dispute_round || 0, tpl.round || 1), last_dispute_at: today() }).eq('id', i.id)));
-      }
+      // la ronda de cada cuenta sube cuando la carta se marca como enviada (lib/letterSend.js), no aquí
       await supabase.from('cr_activity').insert({ client_id: client.id, message: `✉️ ${rows.length} carta(s) generadas: ${tpl.name} (${chosen.length} items)` });
       toast(`${rows.length} carta(s) creadas`);
       window.open(`/admin/imprimir?ids=${data.map((d) => d.id).join(',')}`, '_blank');
@@ -118,7 +115,6 @@ export default function LetterWizard({ open, onClose, client, items, preselect =
         </div>
         <div className="flex flex-wrap items-center gap-4 text-sm">
           <label className="flex items-center gap-2"><input type="checkbox" checked={attach} onChange={(e) => setAttach(e.target.checked)} /> Adjuntar documentos que pide la plantilla (ID / bill)</label>
-          <label className="flex items-center gap-2"><input type="checkbox" checked={markDispute} onChange={(e) => setMarkDispute(e.target.checked)} /> Marcar items como "En disputa"</label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={showRemoved} onChange={(e) => setShowRemoved(e.target.checked)} /> Mostrar eliminados</label>
           <Button size="sm" variant="secondary" icon={CheckSquare} onClick={selectAll}>Seleccionar todo</Button>
           <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>Quitar selección</Button>

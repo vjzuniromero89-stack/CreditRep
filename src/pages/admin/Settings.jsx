@@ -71,7 +71,7 @@ export default function Settings() {
             <Field label="Teléfono"><Input value={s.company_phone || ''} onChange={set('company_phone')} /></Field>
             <Field label="Email"><Input value={s.company_email || ''} onChange={set('company_email')} /></Field>
             <Field label="Dirección" className="sm:col-span-2"><Textarea rows={2} value={s.company_address || ''} onChange={set('company_address')} /></Field>
-            <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={s.allow_public_signup !== false} onChange={(e) => setS({ ...s, allow_public_signup: e.target.checked })} /> Permitir que clientes nuevos se registren solos en <b>/registro</b></label>
+            <p className="text-xs text-slate-500 sm:col-span-2">El registro público está cerrado: solo tú creas los usuarios de tus clientes (Clientes → Nuevo cliente).</p>
           </div>
         </Card>
         <Card title="Precio por cada eliminación ($)">

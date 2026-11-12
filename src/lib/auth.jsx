@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase } from './supabase';
+import { CLIENT_SELF_COLS } from './constants';
 
 const AuthCtx = createContext(null);
 
@@ -11,7 +12,7 @@ export function AuthProvider({ children }) {
     if (!session) { setState({ loading: false, session: null, role: null, client: null }); return; }
     const { data: isAdmin } = await supabase.rpc('cr_is_admin');
     if (isAdmin) { setState({ loading: false, session, role: 'admin', client: null }); return; }
-    const { data: client } = await supabase.from('cr_clients').select('*').eq('user_id', session.user.id).maybeSingle();
+    const { data: client } = await supabase.from('cr_clients').select(CLIENT_SELF_COLS).eq('user_id', session.user.id).maybeSingle();
     setState({ loading: false, session, role: client ? 'client' : 'none', client });
   }, []);
 
@@ -34,7 +35,7 @@ export function AuthProvider({ children }) {
 
   const refreshClient = useCallback(async () => {
     if (!state.session) return;
-    const { data: client } = await supabase.from('cr_clients').select('*').eq('user_id', state.session.user.id).maybeSingle();
+    const { data: client } = await supabase.from('cr_clients').select(CLIENT_SELF_COLS).eq('user_id', state.session.user.id).maybeSingle();
     setState((s) => ({ ...s, client }));
   }, [state.session]);
 

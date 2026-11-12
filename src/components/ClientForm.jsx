@@ -1,8 +1,9 @@
 import { Field, Input, Select, Textarea } from './ui';
 import { US_STATES } from '../lib/constants';
 
-// Formulario de información personal (lo usan el admin y el portal del cliente)
-export default function ClientForm({ value, onChange, showSSNFull = true, compact }) {
+// Formulario de información personal (lo usan el admin y el portal del cliente).
+// El SSN guardado no viene del servidor: el campo sale vacío y solo se manda si se escribe uno nuevo.
+export default function ClientForm({ value, onChange, savedLast4, compact }) {
   const set = (k) => (e) => onChange({ ...value, [k]: e.target.value });
   const v = (k) => value[k] ?? '';
   const fmtSSN = (e) => {
@@ -20,7 +21,9 @@ export default function ClientForm({ value, onChange, showSSNFull = true, compac
           <Field label="Apellido(s)"><Input value={v('last_name')} onChange={set('last_name')} required /></Field>
           <Field label="Sufijo (Jr, Sr)"><Input value={v('suffix')} onChange={set('suffix')} /></Field>
           <Field label="Fecha de nacimiento"><Input type="date" value={v('dob')} onChange={set('dob')} /></Field>
-          <Field label="Seguro Social (SSN)"><Input value={v('ssn')} onChange={fmtSSN} inputMode="numeric" placeholder="123-45-6789" type={showSSNFull ? 'text' : 'password'} /></Field>
+          <Field label="Seguro Social (SSN)" hint={savedLast4 ? `Guardado y cifrado: •••-••-${savedLast4}. Escribe solo si quieres cambiarlo.` : 'Se guarda cifrado.'}>
+            <Input value={v('ssn')} onChange={fmtSSN} inputMode="numeric" autoComplete="off" placeholder={savedLast4 ? `•••-••-${savedLast4}` : '123-45-6789'} />
+          </Field>
           <Field label="Teléfono"><Input type="tel" value={v('phone')} onChange={set('phone')} /></Field>
           <Field label="Teléfono 2"><Input type="tel" value={v('phone2')} onChange={set('phone2')} /></Field>
           <Field label="Email" className="sm:col-span-2"><Input type="email" value={v('email')} onChange={set('email')} /></Field>

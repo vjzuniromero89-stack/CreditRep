@@ -2,13 +2,18 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Printer, Send, X, Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { BUREAU_NAME, DOC_TYPES } from '../../lib/constants';
-import { fullName, today } from '../../lib/format';
-import { envelopeKey } from '../../lib/packageBuilder';
+import { BUREAU_NAME, CLIENT_COLS, DOC_TYPES } from '../../lib/constants';
+import { fullName } from '../../lib/format';
+import { groupEnvelopes } from '../../lib/packageBuilder';
+import { markLettersSent } from '../../lib/letterSend';
 import { Button, Spinner, useToast } from '../../components/ui';
 
-const ATTACH_ORDER = [['id', ['licencia_frente', 'licencia_atras'], 'Copia de identificación'], ['bill', ['bill'], 'Comprobante de dirección'], ['ssn', ['ssn'], 'Tarjeta de Seguro Social']];
-const flagsOf = (l) => ({ id: !!(l.attach_id || (l.attach_docs && !l.attach_bill && !l.attach_id)), bill: !!(l.attach_bill || (l.attach_docs && !l.attach_bill && !l.attach_id)), ssn: !!l.attach_ssn });
+// Cartas viejas (generadas con {{cliente_ssn}}) pueden tener el SSN completo guardado: se imprime tapado.
+const maskFullSSN = (html) => (html || '').replace(/\b\d{3}-\d{2}-(\d{4})\b/g, 'XXX-XX-$1');
+
+// La tarjeta del Seguro Social nunca va en un sobre (aunque una carta vieja tenga attach_ssn = true).
+const ATTACH_ORDER = [['id', ['licencia_frente', 'licencia_atras'], 'Copia de identificación'], ['bill', ['bill'], 'Comprobante de dirección']];
+const flagsOf = (l) => ({ id: !!(l.attach_id || (l.attach_docs && !l.attach_bill && !l.attach_id)), bill: !!(l.attach_bill || (l.attach_docs && !l.attach_bill && !l.attach_id)) });
 
 async function pdfFirstPage(url) {
   try {
@@ -47,7 +52,7 @@ export default function PrintLetters() {
       const cids = [...new Set(letters.map((l) => l.client_id))];
       const clients = {}; const docs = {};
       if (cids.length) {
-        const { data: cl } = await supabase.from('cr_clients').select('*').in('id', cids);
+        const { data: cl } = await supabase.from('cr_clients').select(CLIENT_COLS).in('id', cids);
         (cl || []).forEach((c) => { clients[c.id] = c; });
         const { data: ds } = await supabase.from('cr_documents').select('*').in('client_id', cids).order('created_at', { ascending: false });
         const pick = {};
@@ -63,22 +68,13 @@ export default function PrintLetters() {
           }
         }
       }
-      // sobres
-      const envs = [];
-      letters.forEach((l) => {
-        const k = envelopeKey(l);
-        let e = envs[envs.length - 1];
-        if (!e || e.key !== k || e.client !== l.client_id) { e = { key: k, client: l.client_id, letters: [] }; envs.push(e); }
-        e.letters.push(l);
-      });
+      const envs = groupEnvelopes(letters);
       setState({ letters, options, clients, docs, envs, pkgId });
     })();
   }, [params]);
 
   const markSent = async () => {
-    const q = supabase.from('cr_letters').update({ status: 'enviada', sent_at: today() });
-    const { error } = state.pkgId ? await q.eq('package_id', state.pkgId) : await q.in('id', state.letters.map((l) => l.id));
-    if (error) toast(error.message, 'error'); else toast('Cartas marcadas como enviadas');
+    try { await markLettersSent(state.letters); toast('Cartas marcadas como enviadas. La ronda de cada cuenta subió.'); } catch (e) { toast(e.message, 'error'); }
   };
 
   if (!state) return <Spinner label="Preparando el paquete…" />;
@@ -111,7 +107,7 @@ export default function PrintLetters() {
       {envs.flatMap((env, ei) => {
         const c = clients[env.client] || {};
         const first = env.letters[0];
-        const union = env.letters.reduce((a, l) => { const f = flagsOf(l); return { id: a.id || f.id, bill: a.bill || f.bill, ssn: a.ssn || f.ssn }; }, {});
+        const union = env.letters.reduce((a, l) => { const f = flagsOf(l); return { id: a.id || f.id, bill: a.bill || f.bill }; }, {});
         const toName = first.bureau ? BUREAU_NAME[first.bureau] : first.recipient_name;
         const pages = [];
         if (options.cover) pages.push(
@@ -136,7 +132,7 @@ export default function PrintLetters() {
           </Page>,
         );
         env.letters.forEach((l) => {
-          pages.push(<Page key={l.id} letter><div className="letter-body" dangerouslySetInnerHTML={{ __html: l.body_html }} /></Page>);
+          pages.push(<Page key={l.id} letter><div className="letter-body" dangerouslySetInnerHTML={{ __html: maskFullSSN(l.body_html) }} /></Page>);
           if (options.attachMode === 'carta') pages.push(...attachments(l.client_id, flagsOf(l), l.id));
         });
         if (options.attachMode !== 'carta') pages.push(...attachments(env.client, union, `env${ei}`));

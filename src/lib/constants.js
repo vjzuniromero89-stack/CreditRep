@@ -55,6 +55,14 @@ export const LETTER_STATUS = {
   respondida: { label: 'Respondida', color: 'bg-emerald-100 text-emerald-800 ring-emerald-200' },
 };
 
+// Columnas de cr_clients que se leen desde el navegador. Nunca `ssn` ni `ssn_enc`:
+// el SSN completo solo se ve con cr_reveal_ssn (admin) y queda en el historial.
+const BASE_COLS = ['id', 'client_no', 'user_id', 'username', 'status', 'first_name', 'middle_name', 'last_name', 'suffix', 'dob', 'ssn_last4',
+  'email', 'phone', 'phone2', 'address', 'address2', 'city', 'state', 'zip', 'prev_address', 'employer', 'start_date', 'intake_completed',
+  'intake_completed_at', 'created_at', 'updated_at'];
+export const CLIENT_COLS = [...BASE_COLS, 'source', 'monthly_fee', 'notes', 'reviewed'].join(',');
+export const CLIENT_SELF_COLS = BASE_COLS.join(',');   // el cliente no lee notas internas ni la cuota
+
 export const DOC_TYPES = {
   licencia_frente: 'Licencia / ID (frente)',
   licencia_atras: 'Licencia / ID (atrás)',

@@ -4,6 +4,7 @@ import { Printer, Send, Trash2, Package } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { BUREAU_COLOR, BUREAU_NAME, LETTER_STATUS } from '../lib/constants';
 import { fmtDate, today } from '../lib/format';
+import { markLettersSent } from '../lib/letterSend';
 import { Badge, Button, Empty, Field, Input, Modal, Select, Textarea, useConfirm, useToast } from './ui';
 
 export default function LettersTable({ letters, clients = {}, showClient, onReload }) {
@@ -19,8 +20,17 @@ export default function LettersTable({ letters, clients = {}, showClient, onRelo
     if (error) toast(error.message, 'error'); else { toast('Cartas borradas'); setSel(new Set()); onReload(); }
   };
   const save = async () => {
-    const { error } = await supabase.from('cr_letters').update({ status: edit.status, sent_at: edit.sent_at || null, tracking_number: edit.tracking_number || null, response_notes: edit.response_notes || null }).eq('id', edit.id);
-    if (error) toast(error.message, 'error'); else { toast('Guardado'); setEdit(null); onReload(); }
+    try {
+      const orig = letters.find((l) => l.id === edit.id);
+      // pasar a "enviada" sube la ronda de las cuentas de esa carta
+      if (edit.status === 'enviada' && orig?.status !== 'enviada') await markLettersSent([orig], { sentAt: edit.sent_at || today(), tracking: edit.tracking_number });
+      const { error } = await supabase.from('cr_letters').update({ status: edit.status, sent_at: edit.sent_at || null, tracking_number: edit.tracking_number || null, response_notes: edit.response_notes || null }).eq('id', edit.id);
+      if (error) throw error;
+      toast('Guardado'); setEdit(null); onReload();
+    } catch (e) { toast(e.message, 'error'); }
+  };
+  const bulkSent = async () => {
+    try { await markLettersSent(letters.filter((l) => sel.has(l.id))); toast('Marcadas como enviadas'); setSel(new Set()); onReload(); } catch (e) { toast(e.message, 'error'); }
   };
   const toggle = (id) => { const s = new Set(sel); s.has(id) ? s.delete(id) : s.add(id); setSel(s); };
 
@@ -31,7 +41,7 @@ export default function LettersTable({ letters, clients = {}, showClient, onRelo
         <div className="flex flex-wrap items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm">
           <b>{sel.size} seleccionadas</b>
           <Button size="sm" icon={Printer} onClick={() => print([...sel])}>Imprimir</Button>
-          <Button size="sm" variant="secondary" icon={Send} onClick={async () => { await supabase.from('cr_letters').update({ status: 'enviada', sent_at: today() }).in('id', [...sel]); toast('Marcadas como enviadas'); setSel(new Set()); onReload(); }}>Marcar enviadas</Button>
+          <Button size="sm" variant="secondary" icon={Send} onClick={bulkSent}>Marcar enviadas</Button>
           <Button size="sm" variant="dangerGhost" icon={Trash2} onClick={() => del([...sel])}>Borrar</Button>
         </div>
       )}

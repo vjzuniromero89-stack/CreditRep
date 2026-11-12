@@ -3,8 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, FileUp, Mail, KeyRound, Trash2, Save, User, CreditCard, Search as SearchIcon, IdCard, FolderOpen, FileText, DollarSign, History, LayoutGrid, Download, TrendingUp, TrendingDown, CheckCircle2, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { callApi } from '../../lib/api';
-import { ACCOUNT_CATEGORIES, BUREAUS, BUREAU_NAME, CLIENT_STATUS } from '../../lib/constants';
-import { fmtDate, fullName, maskSSN, money } from '../../lib/format';
+import { ACCOUNT_CATEGORIES, BUREAUS, BUREAU_NAME, CLIENT_COLS, CLIENT_STATUS } from '../../lib/constants';
+import { fmtDate, fullName, money } from '../../lib/format';
 import { Badge, Button, Card, Field, Input, Select, Spinner, Tabs, Textarea, useConfirm, useToast, cx } from '../../components/ui';
 import ClientForm from '../../components/ClientForm';
 import DocManager from '../../components/DocManager';
@@ -39,9 +39,10 @@ export default function ClientDetail() {
   const [newKind, setNewKind] = useState(null);
   const [creds, setCreds] = useState(null);
   const [busyCred, setBusyCred] = useState(false);
+  const [ssnShown, setSsnShown] = useState(null);
 
   const loadClient = useCallback(async () => {
-    const { data, error } = await supabase.from('cr_clients').select('*').eq('id', id).maybeSingle();
+    const { data, error } = await supabase.from('cr_clients').select(CLIENT_COLS).eq('id', id).maybeSingle();
     if (error || !data) { toast('Cliente no encontrado', 'error'); nav('/admin/clientes'); return; }
     setClient(data); setForm(data);
     if (!data.reviewed) await supabase.from('cr_clients').update({ reviewed: true }).eq('id', id);
@@ -87,16 +88,27 @@ export default function ClientDetail() {
 
   if (!client || !form) return <Spinner />;
 
+  const revealSSN = async () => {
+    const { data, error } = await supabase.rpc('cr_reveal_ssn', { p_client: id });
+    if (error) { toast(error.message, 'error'); return; }
+    setSsnShown(data || '—');
+    setTimeout(() => setSsnShown(null), 30000);   // se oculta solo
+    loadRest();   // queda en el historial
+  };
+
   const save = async () => {
+    const typed = String(form.ssn || '').replace(/\D/g, '');
+    if (typed && typed.length !== 9) { toast('El Seguro Social debe tener 9 dígitos', 'error'); return; }
     setSaving(true);
     const row = { ...form };
-    ['id', 'client_no', 'created_at', 'updated_at', 'user_id', 'username'].forEach((k) => delete row[k]);
+    ['id', 'client_no', 'created_at', 'updated_at', 'user_id', 'username', 'ssn_last4'].forEach((k) => delete row[k]);
+    if (!typed) delete row.ssn;   // vacío = se queda el guardado (la base lo cifra si se escribe uno nuevo)
     if (!row.dob) row.dob = null;
     if (row.monthly_fee === '') row.monthly_fee = null;
     if (!row.start_date) row.start_date = null;
     const { error } = await supabase.from('cr_clients').update(row).eq('id', id);
     setSaving(false);
-    if (error) toast(error.message, 'error'); else { toast('Cliente guardado'); loadClient(); }
+    if (error) toast(error.message, 'error'); else { toast('Cliente guardado'); setForm((f) => ({ ...f, ssn: '' })); loadClient(); }
   };
 
   const deleteClient = async () => {
@@ -158,7 +170,8 @@ export default function ClientDetail() {
           </div>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
             <span>#{client.client_no}</span>
-            <span>SSN {maskSSN(client.ssn)}</span>
+            <span className="inline-flex items-center gap-1.5">SSN {ssnShown ? <b className="font-mono text-slate-800">{ssnShown}</b> : (client.ssn_last4 ? `•••-••-${client.ssn_last4}` : '—')}
+              {client.ssn_last4 && !ssnShown && <button className="text-xs font-semibold text-brand-700 hover:underline" onClick={revealSSN} title="Se registra en el historial">Ver</button>}</span>
             {client.phone && <span>{client.phone}</span>}
             {client.username ? <span>Usuario: <b className="text-slate-700">{client.username}</b></span> : <span>Sin acceso al portal</span>}
           </div>
@@ -229,7 +242,7 @@ export default function ClientDetail() {
       {tab === 'datos' && (
         <div className="grid gap-5 lg:grid-cols-3">
           <Card title="Información personal" className="lg:col-span-2">
-            <ClientForm value={form} onChange={setForm} />
+            <ClientForm value={form} onChange={setForm} savedLast4={client.ssn_last4} />
           </Card>
           <div className="space-y-5">
             <Card title="Servicio">

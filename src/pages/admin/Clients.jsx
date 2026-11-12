@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search, Trash2, UserPlus, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { callApi } from '../../lib/api';
-import { CLIENT_STATUS } from '../../lib/constants';
+import { CLIENT_COLS, CLIENT_STATUS } from '../../lib/constants';
 import { fmtDate, fullName, money } from '../../lib/format';
 import { Badge, Button, Empty, Field, Input, Modal, PageHeader, Select, Spinner, useConfirm, useToast } from '../../components/ui';
 import ClientForm from '../../components/ClientForm';
@@ -28,7 +28,7 @@ export default function Clients() {
 
   const load = async () => {
     const [c, i, ch] = await Promise.all([
-      supabase.from('cr_clients').select('*').order('created_at', { ascending: false }),
+      supabase.from('cr_clients').select(CLIENT_COLS).order('created_at', { ascending: false }),
       supabase.from('cr_items').select('client_id,kind,is_negative,status'),
       supabase.from('cr_charges').select('client_id,amount,status').eq('status', 'pendiente'),
     ]);
@@ -81,7 +81,7 @@ export default function Clients() {
           options={[['sin_revisar', '🔔 Registros nuevos sin revisar'], ...Object.entries(CLIENT_STATUS).map(([k, x]) => [k, x.label])]} />
       </div>
       {!clients ? <Spinner /> : !list.length ? (
-        <div className="card"><Empty icon={Users} title="No hay clientes">Crea tu primer cliente o comparte el enlace de registro: <b>{window.location.origin}/registro</b></Empty></div>
+        <div className="card"><Empty icon={Users} title="No hay clientes">Crea tu primer cliente con «Nuevo cliente». Tú le mandas su usuario y contraseña.</Empty></div>
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full min-w-[760px]">

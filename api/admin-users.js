@@ -10,7 +10,7 @@ async function createLogin(sb, client, username, password) {
     if (ex && ex.id !== client.id) throw new Error('Ese usuario ya existe');
   }
   const pass = password || genPassword();
-  if (pass.length < 6) throw new Error('La contraseña debe tener mínimo 6 caracteres');
+  if (pass.length < 10) throw new Error('La contraseña debe tener mínimo 10 caracteres');
   const { data: u, error } = await sb.auth.admin.createUser({ email: usernameToEmail(uname), password: pass, email_confirm: true, user_metadata: { role: 'client', username: uname } });
   if (error) throw new Error(error.message.includes('already') ? 'Ese usuario ya existe' : error.message);
   const { error: e2 } = await sb.from('cr_clients').update({ user_id: u.user.id, username: uname }).eq('id', client.id);
@@ -29,7 +29,8 @@ export default handle(async (req, body) => {
     CLIENT_FIELDS.forEach((k) => { if (body.client?.[k] !== undefined && body.client[k] !== '') row[k] = body.client[k]; });
     if (!row.first_name || !row.last_name) throw new Error('Nombre y apellido son obligatorios');
     row.source = 'admin'; row.reviewed = true;
-    const { data: client, error } = await sb.from('cr_clients').insert(row).select('*').single();
+    // nunca devolver ssn ni ssn_enc al navegador
+    const { data: client, error } = await sb.from('cr_clients').insert(row).select('id,first_name,last_name,username,ssn_last4').single();
     if (error) throw error;
     await sb.from('cr_activity').insert({ client_id: client.id, message: '🆕 Cliente creado por el administrador' });
     if (!body.with_login) return { client };
@@ -52,6 +53,7 @@ export default handle(async (req, body) => {
   if (action === 'reset_password') {
     if (!client?.user_id) throw new Error('Este cliente no tiene acceso todavía');
     const pass = body.password || genPassword();
+    if (pass.length < 10) throw new Error('La contraseña debe tener mínimo 10 caracteres');
     const { error } = await sb.auth.admin.updateUserById(client.user_id, { password: pass });
     if (error) throw error;
     return { username: client.username, password: pass };
@@ -72,7 +74,7 @@ export default handle(async (req, body) => {
 
   if (action === 'add_admin') {
     const { email, password, name } = body;
-    if (!email || !password || password.length < 8) throw new Error('Email y contraseña (mínimo 8) son obligatorios');
+    if (!email || !password || password.length < 10) throw new Error('Email y contraseña (mínimo 10) son obligatorios');
     let userId;
     const { data, error } = await sb.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name, role: 'admin' } });
     if (error) throw error;

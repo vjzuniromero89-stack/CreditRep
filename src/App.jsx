@@ -5,7 +5,6 @@ import { UIProvider, Spinner } from './components/ui';
 import AdminLayout from './components/AdminLayout';
 import Login from './pages/Login';
 import Setup from './pages/Setup';
-import Register from './pages/Register';
 import Dashboard from './pages/admin/Dashboard';
 import Clients from './pages/admin/Clients';
 import ClientDetail from './pages/admin/ClientDetail';
@@ -51,7 +50,8 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/setup" element={<Setup />} />
-          <Route path="/registro" element={<Register />} />
+          {/* registro público cerrado: solo el admin crea usuarios */}
+          <Route path="/registro" element={<Navigate to="/login" replace />} />
           <Route path="/portal" element={<Guard role="client"><Portal /></Guard>} />
           <Route path="/admin/imprimir" element={<Guard role="admin"><PrintLetters /></Guard>} />
           <Route path="/admin" element={<Guard role="admin"><AdminLayout /></Guard>}>

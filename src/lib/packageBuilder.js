@@ -87,7 +87,7 @@ export function buildPackage({ client, items, templates, docs = [], creditors = 
   const add = (spec) => {
     if (!spec.template) { warnings.push(`No hay plantilla activa para "${spec.purposeLabel}". Créala o impórtala en Plantillas.`); return; }
     letters.push({ key: `${spec.group}|${spec.purpose}|${spec.round || ''}|${letters.length}`, enabled: true, ...spec,
-      attach: { id: !!spec.template.attach_id, bill: !!spec.template.attach_bill, ssn: !!spec.template.attach_ssn } });
+      attach: { id: !!spec.template.attach_id, bill: !!spec.template.attach_bill } });   // nunca la tarjeta del SSN
   };
 
   for (const b of PACKET_ORDER) {
@@ -153,11 +153,10 @@ export function buildPackage({ client, items, templates, docs = [], creditors = 
   // 5) avisos
   if (!client.address || !client.city || !client.zip) warnings.push('Falta la dirección completa del cliente (va arriba en cada carta).');
   if (!client.dob) warnings.push('Falta la fecha de nacimiento del cliente.');
-  if (digits(client.ssn).length < 4) warnings.push('Falta el Seguro Social del cliente.');
+  if (digits(client.ssn_last4 || client.ssn).length < 4) warnings.push('Falta el Seguro Social del cliente.');
   const has = (t) => docs.some((d) => d.doc_type === t);
   if (letters.some((l) => l.attach.id) && !has('licencia_frente')) warnings.push('Falta la foto del ID / licencia (frente) para adjuntar.');
   if (letters.some((l) => l.attach.bill) && !has('bill')) warnings.push('Falta la foto del bill para adjuntar.');
-  if (letters.some((l) => l.attach.ssn) && !has('ssn')) warnings.push('Falta la foto de la tarjeta de Seguro Social para adjuntar.');
   letters.filter((l) => l.recipient === 'acreedor' && !l.recipientAddress).forEach((l) => warnings.push(`Falta la dirección de ${l.recipientName}.`));
 
   return { letters, warnings: [...new Set(warnings)], skippedRecent, flagged };
@@ -166,4 +165,23 @@ export function buildPackage({ client, items, templates, docs = [], creditors = 
 // Orden de impresión (y separación en sobres)
 export function envelopeKey(l) {
   return l.recipient_type === 'bureau' || l.recipient === 'bureau' ? `B|${l.bureau}` : `A|${(l.recipient_name || l.recipientName || '').toUpperCase()}`;
+}
+
+// Un sobre por cliente + destinatario en todo el paquete (no solo cartas seguidas: TU/EX/TU daba 2 sobres TU).
+export function groupEnvelopes(letters) {
+  const envs = []; const byKey = new Map();
+  letters.forEach((l) => {
+    const k = l.client_id + '|' + envelopeKey(l);
+    let e = byKey.get(k);
+    if (!e) { e = { key: envelopeKey(l), client: l.client_id, letters: [] }; byKey.set(k, e); envs.push(e); }
+    e.letters.push(l);
+  });
+  return envs;
+}
+
+// Ronda que toma cada cuenta cuando sus cartas a burós salen (la más alta si va en varias).
+export function roundUpdates(letters) {
+  const upd = new Map();
+  letters.filter((l) => l.recipient_type === 'bureau').forEach((l) => (l.item_ids || []).forEach((id) => upd.set(id, Math.max(upd.get(id) || 0, l.round || 1))));
+  return upd;
 }

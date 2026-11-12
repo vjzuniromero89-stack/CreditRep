@@ -41,7 +41,7 @@ export default function ImportTemplates({ open, onClose, onDone }) {
   const save = async () => {
     const rows = list.filter((t) => t.include).map((t) => ({
       name: t.name, body: t.body, recipient: t.recipient, applies_to: t.applies_to, purpose: t.purpose, round: Number(t.round) || 1,
-      default_reason: t.default_reason || null, attach_id: !!t.attach_id, attach_bill: !!t.attach_bill, attach_ssn: !!t.attach_ssn, active: true,
+      default_reason: t.default_reason || null, attach_id: !!t.attach_id, attach_bill: !!t.attach_bill, attach_ssn: false, active: true,
     }));
     if (!rows.length) { toast('Selecciona al menos una plantilla', 'error'); return; }
     setBusy(true);
@@ -99,9 +99,7 @@ export default function ImportTemplates({ open, onClose, onDone }) {
                 <div className="flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 px-3 py-2 text-sm">
                   <span className="font-semibold text-slate-600">Adjuntar:</span>
                   <label className="flex items-center gap-1.5"><input type="checkbox" checked={t.attach_id} onChange={(e) => upd(sel, { attach_id: e.target.checked })} /> ID / licencia</label>
-                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={t.attach_bill} onChange={(e) => upd(sel, { attach_bill: e.target.checked })} /> Bill</label>
-                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={t.attach_ssn} onChange={(e) => upd(sel, { attach_ssn: e.target.checked })} /> Seguro Social</label>
-                </div>
+                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={t.attach_bill} onChange={(e) => upd(sel, { attach_bill: e.target.checked })} /> Bill</label>                </div>
                 <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm">
                   <label className="flex items-center gap-2 font-semibold text-violet-900"><input type="checkbox" checked={t.useAuto} onChange={() => toggleAuto(sel)} /><Wand2 className="h-4 w-4" /> Convertir automáticamente [Name], [Address], [Date], cuentas… a campos de la app</label>
                   {t.useAuto && t.changes.length > 0 && <ul className="ml-6 mt-1 list-disc text-xs text-violet-800">{t.changes.map((c) => <li key={c}>{c}</li>)}</ul>}

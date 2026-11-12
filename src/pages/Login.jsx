@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
@@ -38,11 +38,7 @@ export default function Login({ noAccess }) {
         {err && <p className="text-sm text-red-600">{err}</p>}
         <Button type="submit" className="w-full" size="lg" loading={busy} icon={LogIn}>Entrar</Button>
       </form>
-      {auth.settings?.allow_public_signup !== false && (
-        <p className="mt-6 text-center text-sm text-slate-500">
-          ¿Eres cliente nuevo? <Link to="/registro" className="font-semibold text-brand-700 hover:underline">Crea tu cuenta aquí</Link>
-        </p>
-      )}
+      <p className="mt-6 text-center text-sm text-slate-500">¿Eres cliente nuevo? Pídenos tu usuario y contraseña.</p>
     </AuthShell>
   );
 }

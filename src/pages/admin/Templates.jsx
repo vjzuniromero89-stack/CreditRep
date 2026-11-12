@@ -7,7 +7,7 @@ import { useAuth } from '../../lib/auth';
 import { PLACEHOLDERS, renderLetter, bureauRecipient } from '../../lib/letters';
 import { Badge, Button, Card, Field, Input, PageHeader, Select, Spinner, Textarea, useConfirm, useToast, cx } from '../../components/ui';
 
-const SAMPLE_CLIENT = { first_name: 'Juan', middle_name: 'Carlos', last_name: 'Pérez', address: '123 Main St', address2: 'Apt 4', city: 'Wilmington', state: 'DE', zip: '19801', dob: '1989-01-15', ssn: '123-45-6789', phone: '(302) 555-1212', email: 'juan@email.com' };
+const SAMPLE_CLIENT = { first_name: 'Juan', middle_name: 'Carlos', last_name: 'Pérez', address: '123 Main St', address2: 'Apt 4', city: 'Wilmington', state: 'DE', zip: '19801', dob: '1989-01-15', ssn_last4: '6789', phone: '(302) 555-1212', email: 'juan@email.com' };
 const SAMPLE_ITEMS = [
   { id: 'a', kind: 'cuenta', name: 'MIDLAND CREDIT MGMT', account_number: '8547****', balance: 1245, original_creditor: 'COMENITY BANK' },
   { id: 'b', kind: 'cuenta', name: 'CAPITAL ONE', account_number: '517805******', balance: 845, late_30: 1, late_60: 1 },
@@ -34,7 +34,7 @@ export default function Templates() {
 
   const save = async () => {
     setBusy(true);
-    const row = { name: cur.name, recipient: cur.recipient, applies_to: cur.applies_to, round: Number(cur.round || 1), default_reason: cur.default_reason, body: cur.body, active: cur.active !== false, purpose: cur.purpose || 'otro', attach_id: !!cur.attach_id, attach_bill: !!cur.attach_bill, attach_ssn: !!cur.attach_ssn };
+    const row = { name: cur.name, recipient: cur.recipient, applies_to: cur.applies_to, round: Number(cur.round || 1), default_reason: cur.default_reason, body: cur.body, active: cur.active !== false, purpose: cur.purpose || 'otro', attach_id: !!cur.attach_id, attach_bill: !!cur.attach_bill, attach_ssn: false };
     const res = cur.id ? await supabase.from('cr_templates').update(row).eq('id', cur.id).select().single() : await supabase.from('cr_templates').insert(row).select().single();
     setBusy(false);
     if (res.error) toast(res.error.message, 'error'); else { toast('Plantilla guardada'); load(res.data.id); }
@@ -97,9 +97,7 @@ export default function Templates() {
                 <div className="flex flex-wrap items-center gap-4 rounded-lg bg-slate-50 px-3 py-2 text-sm sm:col-span-4">
                   <span className="font-semibold text-slate-600">Adjuntar al imprimir:</span>
                   <label className="flex items-center gap-1.5"><input type="checkbox" checked={!!cur.attach_id} onChange={(e) => setCur({ ...cur, attach_id: e.target.checked })} /> Copia de ID / licencia</label>
-                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={!!cur.attach_bill} onChange={(e) => setCur({ ...cur, attach_bill: e.target.checked })} /> Bill (comprobante de dirección)</label>
-                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={!!cur.attach_ssn} onChange={(e) => setCur({ ...cur, attach_ssn: e.target.checked })} /> Tarjeta de Seguro Social</label>
-                </div>
+                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={!!cur.attach_bill} onChange={(e) => setCur({ ...cur, attach_bill: e.target.checked })} /> Bill (comprobante de dirección)</label>                </div>
               </div>
               {preview ? (
                 <div className="rounded-lg border border-slate-200 bg-white p-8 shadow-inner">

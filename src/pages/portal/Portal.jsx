@@ -9,7 +9,7 @@ import ClientForm from '../../components/ClientForm';
 import DocManager from '../../components/DocManager';
 
 const EDITABLE = ['first_name', 'middle_name', 'last_name', 'suffix', 'dob', 'ssn', 'email', 'phone', 'phone2', 'address', 'address2', 'city', 'state', 'zip', 'prev_address', 'employer'];
-const REQUIRED = [['first_name', 'Nombre'], ['last_name', 'Apellido'], ['dob', 'Fecha de nacimiento'], ['ssn', 'Seguro Social'], ['phone', 'Teléfono'], ['address', 'Dirección'], ['city', 'Ciudad'], ['state', 'Estado'], ['zip', 'ZIP']];
+const REQUIRED = [['first_name', 'Nombre'], ['last_name', 'Apellido'], ['dob', 'Fecha de nacimiento'], ['phone', 'Teléfono'], ['address', 'Dirección'], ['city', 'Ciudad'], ['state', 'Estado'], ['zip', 'ZIP']];
 
 export default function Portal() {
   const { client, refreshClient, signOut, settings } = useAuth();
@@ -31,18 +31,21 @@ export default function Portal() {
   if (!client || !form) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>;
 
   const missing = REQUIRED.filter(([k]) => !String(form[k] || '').trim());
-  const ssnOk = String(form.ssn || '').replace(/\D/g, '').length === 9;
+  // el SSN guardado nunca vuelve al navegador: vacío = se queda el que ya está (si hay uno)
+  const ssnTyped = String(form.ssn || '').replace(/\D/g, '');
+  const ssnOk = ssnTyped.length === 9 || (!ssnTyped && !!client.ssn_last4);
   const hasLicense = docs.some((d) => d.doc_type === 'licencia_frente');
   const hasBill = docs.some((d) => d.doc_type === 'bill');
 
   const save = async (complete) => {
     if (complete) {
       if (missing.length) { toast('Falta: ' + missing.map((m) => m[1]).join(', '), 'error'); return; }
-      if (!ssnOk) { toast('El Seguro Social debe tener 9 dígitos', 'error'); return; }
       if (!hasLicense || !hasBill) { toast('Sube la foto de tu licencia (frente) y de un bill', 'error'); return; }
     }
+    if ((complete || ssnTyped) && !ssnOk) { toast('El Seguro Social debe tener 9 dígitos', 'error'); return; }
     setBusy(true);
     const row = { ...form };
+    if (!ssnTyped) delete row.ssn;   // no borrar el guardado
     if (!row.dob) row.dob = null;
     if (complete) row.intake_completed = true;
     const { error } = await supabase.from('cr_clients').update(row).eq('id', client.id);
@@ -107,19 +110,19 @@ export default function Portal() {
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" icon={User} onClick={() => setEditing(true)}>Actualizar mi información</Button>
             </div>
-            <Card title="Mis documentos"><DocManager clientId={client.id} uploadedBy="cliente" types={['licencia_frente', 'licencia_atras', 'bill', 'ssn']} onChange={setDocs} /></Card>
+            <Card title="Mis documentos"><DocManager clientId={client.id} uploadedBy="cliente" types={['licencia_frente', 'licencia_atras', 'bill']} onChange={setDocs} /></Card>
           </>
         )}
 
         {showForm && (
           <>
             <Card title="Paso 1 — Tu información personal">
-              <ClientForm value={form} onChange={setForm} showSSNFull />
+              <ClientForm value={form} onChange={setForm} savedLast4={client.ssn_last4} />
               <p className="mt-3 text-xs text-slate-500">🔒 Tu información se guarda de forma privada y solo la usa nuestro equipo para tus disputas.</p>
             </Card>
             <Card title="Paso 2 — Foto de tu licencia y de un bill">
               <p className="mb-3 text-sm text-slate-500">Desde el celular toca <b>Tomar foto</b>. El bill (luz, agua, teléfono, banco) debe mostrar tu nombre y dirección actual.</p>
-              <DocManager clientId={client.id} uploadedBy="cliente" types={['licencia_frente', 'licencia_atras', 'bill', 'ssn']} onChange={setDocs} highlight={['licencia_frente', 'bill']} />
+              <DocManager clientId={client.id} uploadedBy="cliente" types={['licencia_frente', 'licencia_atras', 'bill']} onChange={setDocs} highlight={['licencia_frente', 'bill']} />
             </Card>
             <div className="flex flex-wrap justify-end gap-2">
               {editing && <Button variant="ghost" onClick={() => setEditing(false)}>Cancelar</Button>}

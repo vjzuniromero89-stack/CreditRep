@@ -8,7 +8,7 @@ import { bureauRecipient, renderLetter } from '../lib/letters';
 import { money, today, fullName } from '../lib/format';
 import { Badge, Button, Input, Modal, Select, Spinner, Textarea, useToast, cx } from './ui';
 
-const OPTS0 = { perAccount: false, creditorLetters: true, goodwill: true, cleanPersonal: true, inquiries: true, includeRecent: false, attachMode: 'sobre', cover: true, markDispute: true };
+const OPTS0 = { perAccount: false, creditorLetters: true, goodwill: true, cleanPersonal: true, inquiries: true, includeRecent: false, attachMode: 'sobre', cover: true };
 
 export default function PackageBuilder({ open, onClose, client, items, onDone }) {
   const { settings } = useAuth();
@@ -53,17 +53,13 @@ export default function PackageBuilder({ open, onClose, client, items, onDone })
           template_id: l.template.id, template_name: l.template.name, recipient_type: l.recipient, bureau: l.bureau,
           recipient_name: r.name, recipient_address: r.address, round: l.round || l.template.round || 1,
           item_ids: (l.allItems || l.items).map((i) => i.id),
-          attach_id: !!l.attach.id, attach_bill: !!l.attach.bill, attach_ssn: !!l.attach.ssn, attach_docs: !!(l.attach.id || l.attach.bill),
+          attach_id: !!l.attach.id, attach_bill: !!l.attach.bill, attach_ssn: false, attach_docs: !!(l.attach.id || l.attach.bill),
           body_html: renderLetter({ template: l.template, client, recipientName: r.name, recipientAddress: r.address, bureau: l.bureau, items: l.items, defaultReason: l.template.default_reason, settings }),
         };
       });
       const { error: e2 } = await supabase.from('cr_letters').insert(rows);
       if (e2) throw e2;
-      if (opt.markDispute) {
-        const upd = new Map();
-        enabled.filter((l) => l.recipient === 'bureau').forEach((l) => l.items.forEach((i) => upd.set(i.id, Math.max(upd.get(i.id) || 0, l.round || 1, (i.dispute_round || 0) + 1))));
-        await Promise.all([...upd].map(([id, round]) => supabase.from('cr_items').update({ status: 'en_disputa', dispute_round: round, last_dispute_at: today() }).eq('id', id)));
-      }
+      // la ronda de cada cuenta sube cuando el paquete se marca como enviado (lib/letterSend.js), no aquí
       const cred = enabled.filter((l) => l.recipient === 'acreedor' && l.recipientAddress && ov[l.key]?.recipientAddress);
       if (cred.length) await supabase.from('cr_creditors').upsert(cred.map((l) => ({ name: l.recipientName, norm: l.creditorNorm || creditorNorm(l.recipientName), address: l.recipientAddress })), { onConflict: 'norm' });
       await supabase.from('cr_activity').insert({ client_id: client.id, message: `✨ Paquete de cartas: ${enabled.length} cartas en ${envelopes} sobres (${PACKET_ORDER.map((b) => `${b} ${enabled.filter((l) => l.group === b).length}`).join(', ')}, acreedores ${enabled.filter((l) => l.group === 'ACREEDOR').length})` });
@@ -95,7 +91,6 @@ export default function PackageBuilder({ open, onClose, client, items, onDone })
             <Toggle k="perAccount">Una carta por cada cuenta</Toggle>
             <Toggle k="includeRecent">Incluir lo disputado hace &lt; 30 días</Toggle>
             <Toggle k="cover">Hoja de resumen por sobre</Toggle>
-            <Toggle k="markDispute">Marcar como "En disputa"</Toggle>
             <label className="flex items-center gap-1.5">Adjuntos:
               <select className="rounded border border-slate-300 px-1 py-0.5" value={opt.attachMode} onChange={(e) => setOpt({ ...opt, attachMode: e.target.value })}>
                 <option value="sobre">una vez por sobre</option><option value="carta">después de cada carta</option>
@@ -155,7 +150,7 @@ export default function PackageBuilder({ open, onClose, client, items, onDone })
                           {l.items.length > 6 && <li className="text-slate-400">+ {l.items.length - 6} más</li>}
                         </ul>
                         <div className="mt-2 flex flex-wrap gap-1">
-                          {[['id', 'ID', IdCard], ['bill', 'Bill', Receipt], ['ssn', 'SSN', ShieldCheck]].map(([k, lab, Icon]) => (
+                          {[['id', 'ID', IdCard], ['bill', 'Bill', Receipt]].map(([k, lab, Icon]) => (
                             <button key={k} onClick={() => set(l.key, { attach: { ...(ov[l.key]?.attach || {}), [k]: !l.attach[k] } })}
                               className={cx('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1', l.attach[k] ? 'bg-emerald-100 text-emerald-800 ring-emerald-200' : 'bg-white text-slate-400 ring-slate-200 line-through')}>
                               <Icon className="h-3 w-3" />{lab}

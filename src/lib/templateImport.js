@@ -98,7 +98,7 @@ const RULES = [
   [W(String.raw`(your\s*)?(dob|d\.o\.b\.?|date\s*of\s*birth|birth\s*date|fecha de nacimiento)`), '{{cliente_dob}}', 'Fecha de nacimiento'],
   [W(String.raw`(today'?s\s*)?date|fecha(\s*de hoy)?`), '{{fecha}}', 'Fecha'],
   [W(String.raw`(last\s*(4|four)\s*(digits\s*)?(of\s*)?(your\s*)?(ssn|social(\s*security)?(\s*number)?)|ssn\s*last\s*4|[uú]ltimos 4 del ssn)`), '{{cliente_ssn4}}', 'Últimos 4 del SSN'],
-  [W(String.raw`(your\s*)?(ssn|social\s*security(\s*number)?|seguro social)`), '{{cliente_ssn}}', 'SSN'],
+  [W(String.raw`(your\s*)?(ssn|social\s*security(\s*number)?|seguro social)`), 'XXX-XX-{{cliente_ssn4}}', 'SSN (solo últimos 4)'],
   [W(String.raw`(your\s*)?(phone(\s*number)?|tel[eé]fono)`), '{{cliente_telefono}}', 'Teléfono'],
   [W(String.raw`(your\s*)?(e-?mail(\s*address)?|correo)`), '{{cliente_email}}', 'Email'],
   [W(String.raw`(credit\s*)?(bureau|agency|creditor|collection\s*agency|collector|company|furnisher)('?s)?\s*address|direcci[oó]n del (bureau|acreedor)`), '{{destinatario_direccion}}', 'Dirección del destinatario'],
